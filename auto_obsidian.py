@@ -12,25 +12,29 @@ import json
 # Obsidian 收件箱路径
 OBSIDIAN_VAULT_PATH = "/Users/xnc/vault/Inbox"
 
-# 音频附件存放的子文件夹名称
+# 音频附件存放文件夹
 ASSETS_FOLDER_NAME = "assets"
 
-# 模型选择
-OLLAMA_MODEL = "qwen2.5:7b"
+# 🤖 模型配置 (双模型架构)
+# 1. 分析模型：负责摘要、观点、深度评估 (建议用更聪明的模型，如 qwen2.5:14b, gemini-3-flash)
+MODEL_ANALYSIS = "qwen3:8b"
+
+# 2. 翻译模型：负责全文翻译 (建议用速度快的模型，如 qwen2.5:7b, llama3)
+MODEL_TRANSLATION = "qwen3:8b"
+
+# Whisper 模型
 WHISPER_MODEL = "mlx-community/whisper-large-v3-turbo"
 
-# 翻译分块大小 (字符数)
+# 翻译分块大小
 INTERNAL_PROCESS_CHUNK = 1500
 # ====================================================
 
 def sanitize_filename(name):
-    """清理文件名"""
     name = re.sub(r'[\\/*?:"<>|]', "", name)
     name = name.replace("\n", "").replace("\r", "").strip()
     return name[:80]
 
 def get_video_info(url):
-    """获取视频标题"""
     print("🔍 正在获取视频标题...")
     try:
         cmd = [
@@ -54,7 +58,6 @@ def check_is_duplicate(target_filename):
     return False
 
 def download_audio(url, temp_filename):
-    """下载音频"""
     print(f"⬇️ [1/4] 正在下载音频...")
     output_template = f"{temp_filename}.%(ext)s"
     cmd = [
@@ -73,110 +76,80 @@ def download_audio(url, temp_filename):
         return None
 
 def transcribe_audio(audio_file):
-    """Whisper 转录 (返回完整对象以获取 segments)"""
     print("\n🎙️ [2/4] 正在转录 (MLX加速中)...")
-    result = mlx_whisper.transcribe(
-        audio_file,
-        path_or_hf_repo=WHISPER_MODEL,
-        verbose=True
-    )
-    return result
+    return mlx_whisper.transcribe(audio_file, path_or_hf_repo=WHISPER_MODEL, verbose=True)
 
 def format_original_text(whisper_result):
-    """
-    将 Whisper 的原始文本进行分段处理。
-    如果只有一个大段，尝试按 segments 加换行。
-    """
     segments = whisper_result.get('segments', [])
-    if not segments:
-        return whisper_result['text']
+    if not segments: return whisper_result['text']
+    return "\n".join([seg.get('text', '').strip() for seg in segments])
 
-    formatted_text = ""
-    for seg in segments:
-        text = seg.get('text', '').strip()
-        # 每段话后面加换行，形成自然的阅读流
-        formatted_text += f"{text}\n"
-
-    return formatted_text
-
-def generate_intelligence_json(full_text):
+def generate_intelligence_analysis(full_text):
     """
-    使用 JSON 模式生成结构化数据，彻底避免正文出现多余的元数据文本。
+    使用【分析模型】生成摘要、观点和深度评估 (JSON)
     """
-    print("\n🧠 [3/4] 正在生成智能摘要 (JSON模式)...")
+    print(f"\n🧠 [3/4] 正在进行深度分析 (使用模型: {MODEL_ANALYSIS})...")
 
     prompt = f"""
-    你是一个专业的中文知识库助手。请阅读以下文本（可能是外语），并提取信息。
+    你是一个专业的战略分析师。请阅读以下文本，并输出严格的 JSON 数据。
 
     【任务要求】
-    1. **必须输出标准的 JSON 格式**。
-    2. **必须使用简体中文** 回答所有内容。
-    3. JSON 需包含三个字段: "tags" (标签列表), "summary" (摘要文本), "key_points" (核心观点列表)。
+    1. 必须输出 JSON 格式。
+    2. 必须使用**简体中文**。
+    3. JSON 需包含以下字段：
+       - "tags": [标签列表]
+       - "summary": "300字左右的摘要"
+       - "key_points": ["核心观点1", "核心观点2"...]
+       - "assessment": {{
+            "authenticity": "内容真实性评估 (是否存在事实错误/偏见)",
+            "effectiveness": "有效性评估 (方法论是否可落地)",
+            "timeliness": "实时性评估 (信息是否过时)",
+            "alternatives": "替代方案或策略 (有没有更好的解决方法)"
+         }}
 
-    【JSON 格式示例】
-    {{
-        "tags": ["经济", "投资", "AI"],
-        "summary": "这段视频主要讲述了...",
-        "key_points": [
-            "观点一...",
-            "观点二..."
-        ]
-    }}
-
-    【待处理文本】:
-    {full_text[:12000]}
+    【待分析文本】:
+    {full_text}
     """
 
     try:
-        response = ollama.chat(model=OLLAMA_MODEL, messages=[{'role': 'user', 'content': prompt}])
+        # 使用分析模型
+        response = ollama.chat(model=MODEL_ANALYSIS, messages=[{'role': 'user', 'content': prompt}])
         content = response['message']['content']
 
-        # 提取 JSON 部分 (防止 LLM 在 JSON 外面说废话)
         match = re.search(r"\{.*\}", content, re.DOTALL)
         if match:
-            json_str = match.group(0)
-            data = json.loads(json_str)
-            return data
+            return json.loads(match.group(0))
         else:
             raise ValueError("未找到 JSON")
-
     except Exception as e:
-        print(f"⚠️ JSON 解析失败，回退到普通文本模式: {e}")
-        # 兜底返回
+        print(f"⚠️ 分析失败，回退模式: {e}")
         return {
             "tags": ["待整理"],
-            "summary": "自动摘要生成失败，请手动检查。",
-            "key_points": []
+            "summary": "分析失败，请检查模型输出。",
+            "key_points": [],
+            "assessment": {
+                "authenticity": "N/A", "effectiveness": "N/A", "timeliness": "N/A", "alternatives": "N/A"
+            }
         }
 
 def translate_full_text_loop(full_text):
     """
-    循环分块翻译全文，确保完整性。
+    使用【翻译模型】进行全文翻译
     """
-    print(f"\n🌍 [4/4] 正在全文翻译 ({len(full_text)} 字符)...")
+    print(f"\n🌍 [4/4] 正在全文翻译 (使用模型: {MODEL_TRANSLATION})...")
 
-    # 按长度切分
     chunks = [full_text[i:i+INTERNAL_PROCESS_CHUNK] for i in range(0, len(full_text), INTERNAL_PROCESS_CHUNK)]
-    total_chunks = len(chunks)
     translated_parts = []
 
     for i, chunk in enumerate(chunks):
-        print(f"   -> 翻译进度: {i+1}/{total_chunks}")
-        prompt = f"""
-        请将以下文本翻译成流畅的**简体中文**。
-        要求：
-        1. **保留段落结构**，不要合并成一大块。
-        2. 遇到专业术语保留原文或括号标注。
-        3. 直接输出译文，不要解释。
-
-        【原文片段】：
-        {chunk}
-        """
+        print(f"   -> 翻译进度: {i+1}/{len(chunks)}")
+        prompt = f"将以下文本翻译成流畅的简体中文，保留段落结构，不要解释：\n\n{chunk}"
         try:
-            res = ollama.chat(model=OLLAMA_MODEL, messages=[{'role': 'user', 'content': prompt}])
+            # 使用翻译模型
+            res = ollama.chat(model=MODEL_TRANSLATION, messages=[{'role': 'user', 'content': prompt}])
             translated_parts.append(res['message']['content'])
-        except Exception:
-            translated_parts.append("\n(该片段翻译失败)\n")
+        except:
+            translated_parts.append("\n(翻译失败)\n")
 
     return "\n\n".join(translated_parts)
 
@@ -185,46 +158,41 @@ def move_audio_to_vault(local_audio_file, target_name):
     os.makedirs(assets_dir, exist_ok=True)
     final_name = f"{target_name}.m4a"
     dest_path = os.path.join(assets_dir, final_name)
-
-    if os.path.exists(dest_path):
-        os.remove(dest_path)
+    if os.path.exists(dest_path): os.remove(dest_path)
     shutil.move(local_audio_file, dest_path)
     return final_name
 
-def save_to_obsidian(url, title, data_json, original_text, translated_text, lang_code, audio_filename):
+def save_to_obsidian(url, title, data, original, translated, lang, audio_name):
     print("\n💾 正在写入 Obsidian...")
     md_filename = f"{OBSIDIAN_VAULT_PATH}/{title}.md"
     os.makedirs(os.path.dirname(md_filename), exist_ok=True)
 
-    # 1. 构建 YAML
-    tags = data_json.get("tags", ["待整理"])
-    tags_yaml = "\n".join([f"  - {t}" for t in tags])
+    # 1. 标签
+    tags_yaml = "\n".join([f"  - {t}" for t in data.get("tags", [])])
 
-    # 2. 构建摘要和观点 (使用极简 Lucide 风格)
-    summary = data_json.get("summary", "")
-    key_points = data_json.get("key_points", [])
+    # 2. 观点列表
+    points_md = "\n".join([f"- {p}" for p in data.get("key_points", [])])
 
-    points_md = ""
-    for p in key_points:
-        points_md += f"- {p}\n"
-
-    # 3. 组装翻译部分
-    translation_section = ""
-    if lang_code != 'zh':
-        translation_section = f"""
-## 全文翻译
-
-{translated_text}
-
----
+    # 3. 智能评估板块
+    assess = data.get("assessment", {})
+    assessment_md = f"""
+### 🛡️ 智能评估
+| 维度 | 评估内容 |
+| :--- | :--- |
+| **真实性** | {assess.get('authenticity', 'N/A')} |
+| **有效性** | {assess.get('effectiveness', 'N/A')} |
+| **实时性** | {assess.get('timeliness', 'N/A')} |
+| **替代策略** | {assess.get('alternatives', 'N/A')} |
 """
 
-    # 4. 最终内容组装
+    # 4. 翻译板块
+    trans_section = f"## 全文翻译\n\n{translated}\n\n---\n" if lang != 'zh' else ""
+
     content = f"""---
 created: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}
 source: "{url}"
 type: auto_clipper
-language: {lang_code}
+language: {lang}
 tags:
 {tags_yaml}
 ---
@@ -233,31 +201,32 @@ tags:
 
 ## 智能摘要
 
-{summary}
+{data.get("summary", "")}
 
 ### 核心观点
 
 {points_md}
 
+{assessment_md}
+
 ---
 
 ## 音频回放
 
-![[{ASSETS_FOLDER_NAME}/{audio_filename}]]
+![[{ASSETS_FOLDER_NAME}/{audio_name}]]
 
 ---
-{translation_section}
+{trans_section}
 ## 原始内容
 
-{original_text}
+{original}
 """
-
     with open(md_filename, "w", encoding="utf-8") as f:
         f.write(content)
     print(f"✅ 完成！笔记已创建: {md_filename}")
 
 def main():
-    print("=== Auto-Clipper V4 (Ultimate) ===")
+    print("=== Auto-Clipper V5.0 (双模型智能版) ===")
     url = input("\n请输入链接: ").strip()
     if not url: return
 
@@ -265,37 +234,32 @@ def main():
     if check_is_duplicate(title): return
 
     temp_name = f"temp_{datetime.datetime.now().strftime('%H%M%S')}"
-    downloaded_file = download_audio(url, temp_name)
-    if not downloaded_file: return
+    dl_file = download_audio(url, temp_name)
+    if not dl_file: return
 
     try:
-        # 转录
-        whisper_result = transcribe_audio(downloaded_file)
-        full_text = whisper_result['text']
-        lang = whisper_result.get('language', 'en')
-        print(f"   -> 语言: {lang}")
+        whisper_res = transcribe_audio(dl_file)
+        full_text = whisper_res['text']
+        lang = whisper_res.get('language', 'en')
 
-        # 格式化原始内容 (分段)
-        formatted_original = format_original_text(whisper_result)
+        # 核心逻辑
+        formatted_orig = format_original_text(whisper_res)
 
-        # 生成智能信息 (JSON)
-        intelligence_data = generate_intelligence_json(full_text)
+        # 步骤 1: 使用【分析模型】做深度思考
+        analysis_data = generate_intelligence_analysis(full_text)
 
-        # 全文翻译 (循环分块)
+        # 步骤 2: 使用【翻译模型】做长文本翻译 (如果需要)
         translated = ""
         if lang != 'zh':
             translated = translate_full_text_loop(full_text)
 
-        # 归档音频
-        final_audio_name = move_audio_to_vault(downloaded_file, title)
-
-        # 保存
-        save_to_obsidian(url, title, intelligence_data, formatted_original, translated, lang, final_audio_name)
+        audio_final = move_audio_to_vault(dl_file, title)
+        save_to_obsidian(url, title, analysis_data, formatted_orig, translated, lang, audio_final)
 
     except Exception as e:
-        print(f"❌ 运行出错: {e}")
+        print(f"❌ 错误: {e}")
     finally:
-        if os.path.exists(downloaded_file): os.remove(downloaded_file)
+        if os.path.exists(dl_file): os.remove(dl_file)
 
 if __name__ == "__main__":
     main()
