@@ -15,7 +15,7 @@ OBSIDIAN_VAULT_PATH = "/Users/xnc/vault/Inbox"
 # 音频附件存放文件夹
 ASSETS_FOLDER_NAME = "assets"
 
-# 🤖 模型配置 (双模型架构)
+# 模型配置 (双模型架构)
 # 1. 分析模型：负责摘要、观点、深度评估 (建议用更聪明的模型，如 qwen2.5:14b, gemini-3-flash)
 MODEL_ANALYSIS = "qwen3:8b"
 
@@ -35,7 +35,7 @@ def sanitize_filename(name):
     return name[:80]
 
 def get_video_info(url):
-    print("🔍 正在获取视频标题...")
+    print("正在获取视频标题...")
     try:
         cmd = [
             "yt-dlp", "--get-title",
@@ -47,18 +47,18 @@ def get_video_info(url):
         if not title: raise ValueError("标题为空")
         return sanitize_filename(title)
     except Exception as e:
-        print(f"⚠️ 标题获取失败: {e}")
+        print(f"标题获取失败: {e}")
         return f"素材_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 def check_is_duplicate(target_filename):
     file_path = os.path.join(OBSIDIAN_VAULT_PATH, f"{target_filename}.md")
     if os.path.exists(file_path):
-        print(f"⚠️ 跳过: 笔记已存在。")
+        print(f"跳过: 笔记已存在。")
         return True
     return False
 
 def download_audio(url, temp_filename):
-    print(f"⬇️ [1/4] 正在下载音频...")
+    print(f"[1/4] 正在下载音频...")
     output_template = f"{temp_filename}.%(ext)s"
     cmd = [
         "yt-dlp", "-x", "--audio-format", "m4a",
@@ -72,11 +72,11 @@ def download_audio(url, temp_filename):
                 return file
         return None
     except subprocess.CalledProcessError as e:
-        print(f"\n❌ 下载出错: {e.stderr.decode()}")
+        print(f"\n下载出错: {e.stderr.decode()}")
         return None
 
 def transcribe_audio(audio_file):
-    print("\n🎙️ [2/4] 正在转录 (MLX加速中)...")
+    print("\n[2/4] 正在转录 (MLX加速中)...")
     return mlx_whisper.transcribe(audio_file, path_or_hf_repo=WHISPER_MODEL, verbose=True)
 
 def format_original_text(whisper_result):
@@ -86,9 +86,9 @@ def format_original_text(whisper_result):
 
 def generate_intelligence_analysis(full_text):
     """
-    使用【分析模型】生成摘要、观点和深度评估 (JSON)
+    【修复版】开启流式输出，实时显示进度
     """
-    print(f"\n🧠 [3/4] 正在进行深度分析 (使用模型: {MODEL_ANALYSIS})...")
+    print(f"\n[3/4] 正在进行深度分析 (模型: {MODEL_ANALYSIS})...")
 
     prompt = f"""
     你是一个专业的战略分析师。请阅读以下文本，并输出严格的 JSON 数据。
@@ -101,10 +101,10 @@ def generate_intelligence_analysis(full_text):
        - "summary": "300字左右的摘要"
        - "key_points": ["核心观点1", "核心观点2"...]
        - "assessment": {{
-            "authenticity": "内容真实性评估 (是否存在事实错误/偏见)",
-            "effectiveness": "有效性评估 (方法论是否可落地)",
-            "timeliness": "实时性评估 (信息是否过时)",
-            "alternatives": "替代方案或策略 (有没有更好的解决方法)"
+            "authenticity": "真实性评估",
+            "effectiveness": "有效性评估",
+            "timeliness": "实时性评估",
+            "alternatives": "替代方案"
          }}
 
     【待分析文本】:
@@ -112,31 +112,47 @@ def generate_intelligence_analysis(full_text):
     """
 
     try:
-        # 使用分析模型
-        response = ollama.chat(model=MODEL_ANALYSIS, messages=[{'role': 'user', 'content': prompt}])
-        content = response['message']['content']
+        print("   -> 正在思考中 (请稍候，即将开始生成)...")
 
-        match = re.search(r"\{.*\}", content, re.DOTALL)
+        # 核心修改 1: 添加 stream=True
+        stream = ollama.chat(
+            model=MODEL_ANALYSIS,
+            messages=[{'role': 'user', 'content': prompt}],
+            stream=True
+        )
+
+        full_response_content = ""
+
+        # 核心修改 2: 循环打印每个片段
+        for chunk in stream:
+            part = chunk['message']['content']
+            # end="" 防止自动换行，flush=True 强制立即刷新缓冲区显示
+            print(part, end="", flush=True)
+            full_response_content += part
+
+        print("\n\n   -> 生成完毕，正在解析 JSON...")
+
+        # 后续逻辑不变：解析 JSON
+        match = re.search(r"\{.*\}", full_response_content, re.DOTALL)
         if match:
             return json.loads(match.group(0))
         else:
-            raise ValueError("未找到 JSON")
+            raise ValueError("未找到 JSON 格式的大括号")
+
     except Exception as e:
-        print(f"⚠️ 分析失败，回退模式: {e}")
+        print(f"\n分析失败，回退模式: {e}")
         return {
             "tags": ["待整理"],
-            "summary": "分析失败，请检查模型输出。",
+            "summary": "分析中断或失败，请检查日志。",
             "key_points": [],
-            "assessment": {
-                "authenticity": "N/A", "effectiveness": "N/A", "timeliness": "N/A", "alternatives": "N/A"
-            }
+            "assessment": {}
         }
 
 def translate_full_text_loop(full_text):
     """
     使用【翻译模型】进行全文翻译
     """
-    print(f"\n🌍 [4/4] 正在全文翻译 (使用模型: {MODEL_TRANSLATION})...")
+    print(f"\n[4/4] 正在全文翻译 (使用模型: {MODEL_TRANSLATION})...")
 
     chunks = [full_text[i:i+INTERNAL_PROCESS_CHUNK] for i in range(0, len(full_text), INTERNAL_PROCESS_CHUNK)]
     translated_parts = []
@@ -163,7 +179,7 @@ def move_audio_to_vault(local_audio_file, target_name):
     return final_name
 
 def save_to_obsidian(url, title, data, original, translated, lang, audio_name):
-    print("\n💾 正在写入 Obsidian...")
+    print("\n正在写入 Obsidian...")
     md_filename = f"{OBSIDIAN_VAULT_PATH}/{title}.md"
     os.makedirs(os.path.dirname(md_filename), exist_ok=True)
 
@@ -176,7 +192,7 @@ def save_to_obsidian(url, title, data, original, translated, lang, audio_name):
     # 3. 智能评估板块
     assess = data.get("assessment", {})
     assessment_md = f"""
-### 🛡️ 智能评估
+### 智能评估
 | 维度 | 评估内容 |
 | :--- | :--- |
 | **真实性** | {assess.get('authenticity', 'N/A')} |
@@ -223,7 +239,7 @@ tags:
 """
     with open(md_filename, "w", encoding="utf-8") as f:
         f.write(content)
-    print(f"✅ 完成！笔记已创建: {md_filename}")
+    print(f"完成！笔记已创建: {md_filename}")
 
 def main():
     print("=== Auto-Clipper V5.0 (双模型智能版) ===")
@@ -257,7 +273,7 @@ def main():
         save_to_obsidian(url, title, analysis_data, formatted_orig, translated, lang, audio_final)
 
     except Exception as e:
-        print(f"❌ 错误: {e}")
+        print(f"错误: {e}")
     finally:
         if os.path.exists(dl_file): os.remove(dl_file)
 
