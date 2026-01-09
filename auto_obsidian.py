@@ -14,7 +14,7 @@ OBSIDIAN_VAULT_PATH = "/Users/xnc/vault/Inbox"
 # 音频附件存放文件夹
 ASSETS_FOLDER_NAME = "assets"
 
-# 🤖 模型配置
+# 模型配置
 # 分析模型 (建议用逻辑强的，如 qwen2.5:14b 或 qwen3:8b)
 MODEL_ANALYSIS = "qwen3:8b"
 
@@ -27,7 +27,7 @@ WHISPER_MODEL = "mlx-community/whisper-large-v3-turbo"
 
 def sanitize_filename(name):
     """
-    【V6.1 文件名清洗】
+    【文件名清洗】
     1. 移除 Markdown/Obsidian 敏感符 (#, ^, [, ])
     2. 移除系统非法字符
     3. 空格和标点转下划线 (Snake Case 风格)
@@ -58,6 +58,26 @@ def sanitize_filename(name):
         name = name[:80]
 
     return name
+
+def sanitize_tag(tag):
+    """
+    【V6.2 新增：标签清洗】
+    Obsidian 标签不支持空格和特殊符号。
+    1. 去掉 # 号
+    2. 将空格替换为下划线 (AI Tool -> AI_Tool)
+    3. 去除非法字符
+    """
+    # 去掉 # 和首尾空格
+    tag = tag.replace("#", "").strip()
+
+    # 将空格替换为下划线
+    tag = tag.replace(" ", "_")
+
+    # 移除其他可能的非法字符 (保留字母、数字、下划线、连字符、中文)
+    # 这里简单移除常见的标点符号
+    tag = re.sub(r'[\\/*?:"<>|,]', '', tag)
+
+    return tag
 
 def get_video_info(url):
     print("[信息] 正在获取视频标题...")
@@ -244,8 +264,10 @@ def save_to_obsidian(url, title, data, original, translated, lang, audio_name):
     md_filename = f"{OBSIDIAN_VAULT_PATH}/{title}.md"
     os.makedirs(os.path.dirname(md_filename), exist_ok=True)
 
-    tags = data.get("tags", [])
-    tags_clean = [t.replace("#", "").strip() for t in tags]
+    # === V6.2 修复: 清洗标签格式 (空格转下划线) ===
+    raw_tags = data.get("tags", [])
+    # 过滤空标签并清洗
+    tags_clean = [sanitize_tag(t) for t in raw_tags if t]
     tags_yaml = "\n".join([f"  - {t}" for t in tags_clean])
 
     points_md = "\n".join([f"- {p}" for p in data.get("key_points", [])])
@@ -296,7 +318,7 @@ tags:
     print(f"[成功] 完成！笔记已创建: {md_filename}")
 
 def main():
-    print("=== Auto-Clipper V6.1 (纯净版) ===")
+    print("=== Auto-Clipper V6.2 (标签修复版) ===")
     url = input("\n请输入链接: ").strip()
     if not url: return
 
