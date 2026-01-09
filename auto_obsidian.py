@@ -86,35 +86,44 @@ def format_original_text(whisper_result):
 
 def generate_intelligence_analysis(full_text):
     """
-    【修复版】开启流式输出，实时显示进度
+    【V5.2 修复版】增加安全截断 + 增强 JSON 清洗能力
     """
-    print(f"\n[3/4] 正在进行深度分析 (模型: {MODEL_ANALYSIS})...")
+    print(f"\n🧠 [3/4] 正在进行深度分析 (模型: {MODEL_ANALYSIS})...")
 
+    # === 修复点 1: 安全截断 ===
+    # 25000 字符大约对应 40-50 分钟的密集对话。
+    # 这能确保绝大多数 8B 模型不会爆显存或胡言乱语。
+    safe_text = full_text[:25000]
+
+    # 提示词微调：强调不要使用 Markdown 代码块
     prompt = f"""
-    你是一个专业的战略分析师。请阅读以下文本，并输出严格的 JSON 数据。
+    你是一个专业的战略分析师、金融分析师及资深投资顾问。
+    请阅读以下文本（可能是截取的片段），并输出严格的 JSON 数据。
 
     【任务要求】
-    1. 必须输出 JSON 格式。
+    1. **仅输出 JSON**，不要包含 markdown 代码块（如 ```json）。
     2. 必须使用**简体中文**。
-    3. JSON 需包含以下字段：
-       - "tags": [标签列表]
-       - "summary": "300字左右的摘要"
-       - "key_points": ["核心观点1", "核心观点2"...]
-       - "assessment": {{
-            "authenticity": "真实性评估",
-            "effectiveness": "有效性评估",
-            "timeliness": "实时性评估",
-            "alternatives": "替代方案"
-         }}
+    3. 遇到未提及的信息，请基于逻辑推演或填入 "未提及"。
+    4. JSON 结构如下：
+       {{
+           "tags": ["标签1", "标签2"],
+           "summary": "详细摘要...",
+           "key_points": ["观点1", "观点2"],
+           "assessment": {{
+                "authenticity": "...",
+                "effectiveness": "...",
+                "timeliness": "...",
+                "alternatives": "..."
+             }}
+       }}
 
     【待分析文本】:
-    {full_text}
+    {safe_text}
     """
 
     try:
         print("   -> 正在思考中 (请稍候，即将开始生成)...")
 
-        # 核心修改 1: 添加 stream=True
         stream = ollama.chat(
             model=MODEL_ANALYSIS,
             messages=[{'role': 'user', 'content': prompt}],
@@ -123,29 +132,43 @@ def generate_intelligence_analysis(full_text):
 
         full_response_content = ""
 
-        # 核心修改 2: 循环打印每个片段
         for chunk in stream:
             part = chunk['message']['content']
-            # end="" 防止自动换行，flush=True 强制立即刷新缓冲区显示
             print(part, end="", flush=True)
             full_response_content += part
 
         print("\n\n   -> 生成完毕，正在解析 JSON...")
 
-        # 后续逻辑不变：解析 JSON
-        match = re.search(r"\{.*\}", full_response_content, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
+        # === 修复点 2: 增强型 JSON 提取逻辑 ===
+        # 1. 先尝试移除 Markdown 代码块标记 (```json 和 ```)
+        cleaned_content = re.sub(r"```json", "", full_response_content, flags=re.IGNORECASE)
+        cleaned_content = re.sub(r"```", "", cleaned_content)
+
+        # 2. 使用贪婪匹配寻找最外层的 {}
+        # 解释：从第一个 { 开始，到最后一个 } 结束
+        start_idx = cleaned_content.find('{')
+        end_idx = cleaned_content.rfind('}')
+
+        if start_idx != -1 and end_idx != -1:
+            json_str = cleaned_content[start_idx : end_idx+1]
+            return json.loads(json_str)
         else:
-            raise ValueError("未找到 JSON 格式的大括号")
+            # 如果也没找到，抛出异常进入回退模式
+            raise ValueError("未找到有效的 JSON 结构")
 
     except Exception as e:
-        print(f"\n分析失败，回退模式: {e}")
+        print(f"\n⚠️ 分析失败，回退模式: {e}")
+        # 返回一个空壳数据，保证程序不崩溃，至少能把翻译结果保存下来
         return {
-            "tags": ["待整理"],
-            "summary": "分析中断或失败，请检查日志。",
-            "key_points": [],
-            "assessment": {}
+            "tags": ["待整理", "分析失败"],
+            "summary": f"智能分析生成失败。原因: {str(e)}。请查看下方的【原始内容】或【全文翻译】。",
+            "key_points": ["(分析模型未能正确返回结果)"],
+            "assessment": {
+                "authenticity": "N/A",
+                "effectiveness": "N/A",
+                "timeliness": "N/A",
+                "alternatives": "N/A"
+            }
         }
 
 def translate_full_text_loop(full_text):
