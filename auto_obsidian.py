@@ -126,22 +126,58 @@ def download_audio(url, temp_filename):
 def clean_hallucinations(text):
     """清洗 Whisper 幻觉 (重复词)"""
     if not text: return text
-    # 清洗单词重复
-    text = re.sub(r'\b(\w+)(?:\s+\1\b){4,}', r'\1', text, flags=re.IGNORECASE)
-    # 清洗短语重复
-    text = re.sub(r'\b(.{2,20})(?:\s+\1\b){4,}', r'\1', text, flags=re.IGNORECASE)
-    # 清洗 Thank you
+    # 1. 清洗连续重复的短语 (3次及以上)
+    # 例如 "OK! OK! OK! OK!" -> "OK!"
+    text = re.sub(r'\b(.+?)\b(?:\s+\1\b){2,}', r'\1', text, flags=re.IGNORECASE)
+    
+    # 2. 清洗 Thank you 幻觉
     text = re.sub(r'(Thank you\.?(\s*)){2,}', 'Thank you.', text, flags=re.IGNORECASE)
+    
+    # 3. 清洗特定垃圾文本
+    text = re.sub(r'字幕由.*提供', '', text)
+    
     return text.strip()
+
+def clean_segments(segments):
+    """【V6.3 新增】清洗分段，移除零时长幻觉"""
+    if not segments: return []
+    
+    cleaned = []
+    last_text = ""
+    
+    for seg in segments:
+        text = seg.get('text', '').strip()
+        start = seg.get('start', 0)
+        end = seg.get('end', 0)
+        
+        # 规则 1：移除零时长且重复的幻觉
+        if start == end and text.lower() == last_text.lower():
+            continue
+            
+        # 规则 2：移除时长极短 (<0.1s) 且重复的内容
+        if (end - start) < 0.1 and text.lower() == last_text.lower():
+            continue
+
+        cleaned.append(seg)
+        last_text = text
+        
+    return cleaned
 
 def transcribe_audio(audio_file):
     print("\n[2/4] 正在转录 (MLX加速中)...")
     result = mlx_whisper.transcribe(audio_file, path_or_hf_repo=WHISPER_MODEL, verbose=True)
 
-    # 立即清洗
+    # 1. 清洗分段
+    if 'segments' in result:
+        original_count = len(result['segments'])
+        result['segments'] = clean_segments(result['segments'])
+        if original_count > len(result['segments']):
+            print(f"   [清理] 已自动过滤 {original_count - len(result['segments'])} 条幻觉分段")
+
+    # 2. 清洗全文文本
     raw_text = result['text']
     cleaned_text = clean_hallucinations(raw_text)
-    if len(raw_text) - len(cleaned_text) > 50:
+    if len(raw_text) - len(cleaned_text) > 10:
         print(f"   [清理] 已自动清除幻觉文本 ({len(raw_text) - len(cleaned_text)} 字符)")
 
     result['text'] = cleaned_text
