@@ -77,6 +77,7 @@
     - [x] 实现 `ReleaseBinaries()`: 将内嵌的 `yt-dlp` 和 `ffmpeg` 释放到 `~/Library/Application Support/v2k/bin/`。
     - [x] 实现 `AutoUpdateDependencies()`: 异步执行 `yt-dlp -U`。
     - [x] 单元测试 `dependency_test.go`。
+    - [x] **AI Dependency Script**: 更新 `scripts/deps.go` 支持 `tar.gz` 及特定路径提取，完成 `llama-server` 和 `whisper` 库文件的下载集成。
 - [x] 搭建简易 UI (输入框 + 按钮 + 控制台区域)。
 - [x] **UI Polish**:
     - [x] 移除 Wails Logo。
@@ -95,9 +96,16 @@
 - [x] **Storage Module**:
     - [x] 实现 `SaveNote` 并移植 `sanitize_filename` 逻辑。
 
-### Phase 3: AI 引擎集成 (AI Integration)
-- [ ] **Whisper Integration**: 引入 `whisper.cpp` Go binding，实现 `Transcribe`。
-- [ ] **LLM Integration**: 引入 `go-llama.cpp` binding，实现 `Analyze`。
+### Phase 3: AI 引擎集成 (AI Integration - BYOAI) - **[Completed]**
+- [x] **Strategy Change**: Switch to "Bring Your Own AI" (System Dependencies).
+- [x] **Transcriber Module**:
+    - [x] Implement `Transcribe` using system `whisper-cli` / `whisper-main`.
+    - [x] Implement `convertToWav` using `ffmpeg`.
+- [x] **Analyzer Module**:
+    - [x] Implement `Analyze` using local Ollama API (`qwen2.5:7b`).
+- [x] **App Integration**:
+    - [x] Update `SubmitTask` to run full pipeline (DL -> Transcribe -> Analyze -> Save).
+    - [x] Add `CheckDependencies` API for frontend.
 
 ### Phase 4: UI 完善与任务队列
 - [ ] 实现多任务并行处理与状态追踪。
