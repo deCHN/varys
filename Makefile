@@ -63,9 +63,9 @@ deps-frontend: ## Install Frontend dependencies
 	cd $(FRONTEND_DIR) && $(NPM) install
 
 .PHONY: deps-binaries
-deps-binaries: ## Download external binaries (yt-dlp, ffmpeg) via script
+deps-binaries: ## Download external binaries (yt-dlp, ffmpeg, AI engines) via Go script
 	@echo "Downloading external binaries..."
-	cd $(PROJECT_DIR) && chmod +x scripts/download_deps.sh && ./scripts/download_deps.sh
+	cd $(PROJECT_DIR) && $(GO) run scripts/deps.go
 
 # ------------------------------------------------------------------------------
 # Development
