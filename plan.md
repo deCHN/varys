@@ -1,6 +1,6 @@
 # Project Plan: v2k-mac (Auto-Clipper Native App)
 
-**Version:** 0.1.0-draft
+**Version:** 0.3.0-draft
 **Branch:** `go_wails_mac`
 **Target Platform:** macOS (Apple Silicon Optimized)
 **Framework:** Go + Wails (v2) + React/TypeScript
@@ -17,20 +17,15 @@
 *   **AI Inference (Native)**:
     *   **ASR**: `whisper.cpp` (Go Bindings) - 用于语音转文字
     *   **LLM**: `llama.cpp` (via `go-llama.cpp` or compatible bindings) - 用于总结与翻译
-*   **External Dependencies**: `yt-dlp` (二进制文件调取)
+*   **External Dependencies**: `yt-dlp`, `ffmpeg` (采用 Sidecar 模式内置)
 
 ### 1.2 数据流 (Data Flow)
 1.  **UI**: 用户输入 URL -> 点击 "Process"
 2.  **Go Bridge**: 接收 URL
-3.  **Downloader (Go)**: 调用 `yt-dlp` 下载音频到临时目录
-4.  **Audio Processor (Go/CGO)**: 调用 `whisper.cpp` 进行转录 (m4a -> wav -> text/segments)
-5.  **Intelligence Engine (Go/CGO)**:
-    *   加载 LLM (GGUF)
-    *   发送 Prompt + Transcript
-    *   获取 JSON 结构的分析结果
-6.  **File Manager (Go)**:
-    *   移动音频到 Obsidian 库
-    *   生成 Markdown 笔记
+3.  **Downloader (Go)**: 调用内置的 `yt-dlp` 下载音频
+4.  **Audio Processor (Go/CGO)**: 调用 `whisper.cpp` 进行转录
+5.  **Intelligence Engine (Go/CGO)**: 加载 LLM 执行分析与翻译
+6.  **File Manager (Go)**: 移动音频到 Obsidian 库，生成 Markdown 笔记
 7.  **UI**: 推送进度更新 -> 显示最终结果
 
 ---
@@ -43,8 +38,9 @@
 | :--- | :--- | :--- |
 | `main` | Wails 应用初始化、生命周期管理、菜单配置 | `wails` |
 | `app` | Wails 绑定的核心结构体，暴露 API 给前端 | 所有子模块 |
-| `downloader` | 负责检查/更新 `yt-dlp`，执行音频下载，格式转换 (ffmpeg) | `os/exec` |
-| `transcriber` | 封装 `whisper.cpp`，管理模型加载，执行推理，清洗幻觉 | `whisper.cpp` bindings |
+| `dependency` | **[已完成]** 管理内嵌的 `yt-dlp` 和 `ffmpeg`。负责释放二进制文件到本地路径，并执行 `-U` 自动更新。 | `embed`, `os/exec` |
+| `downloader` | 执行音频下载，调用 `dependency` 提供的路径。 | `yt-dlp` |
+| `transcriber` | 封装 `whisper.cpp`，管理模型加载，执行推理。 | `whisper.cpp` bindings |
 | `analyzer` | 封装 `llama.cpp`，管理 Prompt 模板，执行文本分析与翻译 | `llama.cpp` bindings |
 | `storage` | 负责 Obsidian 路径解析、文件读写、Markdown 模板渲染 | `text/template` |
 | `config` | 管理用户配置 (Vault 路径、模型路径、偏好设置) | `viper` or standard JSON |
@@ -55,110 +51,67 @@
 | :--- | :--- |
 | `Dashboard` | 主界面，包含 URL 输入框、任务列表 |
 | `TaskCard` | 单个任务的状态显示 (下载中/转录中/完成)，进度条 |
-| `Settings` | 配置界面 (Obsidian 路径选择、模型管理/下载) |
+| `Settings` | 配置界面 (Obsidian 路径选择、模型管理、依赖更新检查) |
 | `LogViewer` | 实时显示后端日志 (用于调试) |
 
 ---
 
 ## 3. 接口定义 (Wails API Definitions)
 
-前端通过 `window.go.main.App.<MethodName>` 调用。
-
-### 3.1 核心业务接口
-
-```go
-// Task 结构体 (用于前端显示)
-type Task struct {
-    ID          string  `json:"id"`
-    URL         string  `json:"url"`
-    Status      string  `json:"status"` // "pending", "downloading", "transcribing", "analyzing", "done", "error"
-    Progress    float64 `json:"progress"`
-    Title       string  `json:"title"`
-    Log         []string `json:"log"`
-}
-
-// 提交新任务
-// Return: taskID (用于订阅事件) or error
-func (a *App) SubmitTask(url string) (string, error)
-
-// 获取当前配置
-func (a *App) GetConfig() (Config, error)
-
-// 更新配置
-func (a *App) UpdateConfig(cfg Config) error
-
-// 选择文件夹 (调用系统原生对话框)
-func (a *App) SelectVaultPath() (string, error)
-```
-
-### 3.2 事件订阅 (Wails Runtime Events)
-
-后端通过 `runtime.EventsEmit` 主动推送，前端通过 `EventsOn` 监听。
-
-*   `task:progress`: `{id: "123", status: "transcribing", progress: 0.45, message: "Processing segment 10/24..."}`
-*   `task:complete`: `{id: "123", resultPath: "/path/to/obsidian/note.md"}`
-*   `task:error`: `{id: "123", error: "Download failed"}`
+### 3.1 核心业务接口 (Go to JS)
+*   `SubmitTask(url string) (string, error)`
+*   `GetConfig() (Config, error)`
+*   `UpdateConfig(cfg Config) error`
+*   `SelectVaultPath() (string, error)`
+*   `CheckDependencies() (DependencyStatus, error)`
+*   `UpdateDependencies() error`
 
 ---
 
 ## 4. 详细开发任务 (Development Tasks)
 
-### Phase 1: 基础脚手架 (Infrastructure)
-- [ ] 初始化 Wails 项目 (`wails init -n v2k-mac -t react-ts`)
-- [ ] 配置 Go mod 依赖
-- [ ] 搭建简易 UI (输入框 + 按钮 + 控制台日志区域)
-- [ ] 实现 `Log` 系统：Go `fmt.Println` -> Wails Event -> 前端显示
+### Phase 1: 基础脚手架与依赖管理 (Infrastructure & Sidecar) - **[Completed]**
+- [x] 初始化 Wails 项目 (`wails init -n v2k-mac -t react-ts`)
+- [x] **Dependency Manager**:
+    - [x] 创建 `resources/bin/darwin_arm64/` 目录。
+    - [x] 实现 `ReleaseBinaries()`: 将内嵌的 `yt-dlp` 和 `ffmpeg` 释放到 `~/Library/Application Support/v2k/bin/`。
+    - [x] 实现 `AutoUpdateDependencies()`: 异步执行 `yt-dlp -U`。
+    - [x] 单元测试 `dependency_test.go`。
+- [x] 搭建简易 UI (输入框 + 按钮 + 控制台区域)。
+- [x] **UI Polish**:
+    - [x] 移除 Wails Logo。
+    - [x] 调整标题为 "v2k"。
+    - [x] 修复按钮样式。
+    - [x] 调整初始窗口大小为 800x600。
+- [x] **Tests Setup**:
+    - [x] 配置 Vitest (happy-dom) 进行单元测试。
+    - [x] 配置 Playwright 进行 E2E 测试和截图。
 
 ### Phase 2: 核心逻辑迁移 (Core Logic Migration)
 - [ ] **Config Module**: 实现配置文件的读写 (保存 Obsidian 路径)。
 - [ ] **Downloader Module**:
-    - [ ] 检测本地是否安装 `yt-dlp` 和 `ffmpeg`。
-    - [ ] 实现 `DownloadAudio(url)` 函数，调用命令下载 m4a。
-    - [ ] **Test**: 单元测试 `downloader`，Mock `exec.Command`。
+    - [ ] 调用 `dependency` 模块获取 `yt-dlp` 路径并下载音频。
 - [ ] **Storage Module**:
-    - [ ] 实现 `SaveNote(metadata, content)`。
-    - [ ] 移植 Python 中的 `sanitize_filename` 逻辑。
+    - [ ] 实现 `SaveNote` 并移植 `sanitize_filename` 逻辑。
 
-### Phase 3: AI 引擎集成 (AI Integration) - **难点**
-- [ ] **Whisper Integration**:
-    - [ ] 引入 `whisper.cpp` Go binding。
-    - [ ] 实现模型下载器 (首次运行下载 ggml-base.bin)。
-    - [ ] 实现 `Transcribe(audioPath)`。
-    - [ ] 移植 `clean_hallucinations` 逻辑 (Go string 处理)。
-- [ ] **LLM Integration**:
-    - [ ] 引入 `go-llama.cpp` binding。
-    - [ ] 实现模型下载器 (下载 Qwen2.5 GGUF)。
-    - [ ] 实现 `Analyze(text)`，复用 Python 中的 Prompt。
+### Phase 3: AI 引擎集成 (AI Integration)
+- [ ] **Whisper Integration**: 引入 `whisper.cpp` Go binding，实现 `Transcribe`。
+- [ ] **LLM Integration**: 引入 `go-llama.cpp` binding，实现 `Analyze`。
 
-### Phase 4: UI 完善 (UI Polish)
-- [ ] 使用 Tailwind 美化界面。
-- [ ] 实现任务队列 (允许并发或排队处理多个 URL)。
-- [ ] 增加“模型管理”页面 (显示模型下载进度)。
-
-### Phase 5: 打包与发布 (Distribution)
-- [ ] 配置 `wails build` 参数 (图标、版权信息)。
-- [ ] 测试 `.app` 在无开发环境机器上的运行情况。
+### Phase 4: UI 完善与任务队列
+- [ ] 实现多任务并行处理与状态追踪。
+- [ ] 增加模型下载与管理的 UI 反馈。
 
 ---
 
 ## 5. 测试用例规划 (Test Plan)
 
-### 5.1 单元测试 (Go Unit Tests)
-| 模块 | 测试点 | 预期结果 |
-| :--- | :--- | :--- |
-| `utils` | `SanitizeFilename("A/B:C")` | `A_B_C` |
-| `downloader` | `GetVideoTitle` (Mock Network) | 返回 Mock 标题 |
-| `transcriber` | `CleanHallucinations("OK! OK! OK!")` | `OK!` |
+### 5.1 单元测试
+- [x] **Dependency Test**: 验证二进制文件释放逻辑。
+- [x] **UI Unit Test**: 验证 React 组件渲染 (Vitest)。
 
-### 5.2 集成测试 (Integration Tests)
-*   **Audio Pipeline**: 输入一个 30秒的本地测试音频 -> 验证是否生成了非空的文本。
-*   **LLM Pipeline**: 输入 "Hello World" -> 验证是否返回 JSON 格式结果。
-
-### 5.3 界面测试 (Manual/E2E)
-*   **场景**: 用户首次打开 App。
-    *   期望：自动引导设置 Obsidian 路径，提示下载必要模型。
-*   **场景**: 输入无效 URL。
-    *   期望：UI 弹出错误提示，任务状态变红。
+### 5.2 E2E 测试
+- [x] **Smoke Test**: 启动 App，检查标题，输入 URL，截图 (Playwright)。
 
 ---
 
@@ -173,5 +126,3 @@ func (a *App) SelectVaultPath() (string, error)
 3.  **内存占用**:
     *   *风险*: 同时运行 Whisper 和 LLM 可能导致 OOM。
     *   *对策*: 串行化处理 (先释放 Whisper 内存，再加载 LLM)。
-
----
