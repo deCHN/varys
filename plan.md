@@ -87,12 +87,13 @@
     - [x] 配置 Vitest (happy-dom) 进行单元测试。
     - [x] 配置 Playwright 进行 E2E 测试和截图。
 
-### Phase 2: 核心逻辑迁移 (Core Logic Migration)
-- [ ] **Config Module**: 实现配置文件的读写 (保存 Obsidian 路径)。
-- [ ] **Downloader Module**:
-    - [ ] 调用 `dependency` 模块获取 `yt-dlp` 路径并下载音频。
-- [ ] **Storage Module**:
-    - [ ] 实现 `SaveNote` 并移植 `sanitize_filename` 逻辑。
+### Phase 2: 核心逻辑迁移 (Core Logic Migration) - **[Completed]**
+- [x] **Config Module**: 实现配置文件的读写 (保存 Obsidian 路径)。
+- [x] **Downloader Module**:
+    - [x] 调用 `dependency` 模块获取 `yt-dlp` 路径并下载音频。
+    - [x] 单元测试 `downloader_test.go`。
+- [x] **Storage Module**:
+    - [x] 实现 `SaveNote` 并移植 `sanitize_filename` 逻辑。
 
 ### Phase 3: AI 引擎集成 (AI Integration)
 - [ ] **Whisper Integration**: 引入 `whisper.cpp` Go binding，实现 `Transcribe`。
