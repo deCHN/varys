@@ -107,9 +107,21 @@
     - [x] Update `SubmitTask` to run full pipeline (DL -> Transcribe -> Analyze -> Save).
     - [x] Add `CheckDependencies` API for frontend.
 
-### Phase 4: UI 完善与任务队列
-- [ ] 实现多任务并行处理与状态追踪。
-- [ ] 增加模型下载与管理的 UI 反馈。
+### Phase 4: UI 完善与任务队列 (UI Polish & Task Queue)
+- [ ] **Navigation & Layout**:
+    - [ ] 实现侧边栏/Tab切换 (Dashboard vs Settings)。
+- [ ] **Settings Page**:
+    - [ ] 实现 `CheckDependencies` 可视化反馈 (红/绿灯)。
+    - [ ] 实现配置表单 (Vault Path, Model Path, Ollama Model)。
+    - [ ] 集成 Wails 原生对话框 (`runtime.OpenDirectoryDialog`, `runtime.OpenFileDialog`) 选择路径。
+- [ ] **Task Queue (Dashboard)**:
+    - [ ] 重构主界面，支持多任务列表展示。
+    - [ ] 优化日志显示，从纯文本改为结构化状态 (下载中 -> 转录中 -> 完成)。
+
+### Phase 5: 打包与发布 (Distribution)
+- [ ] 配置应用图标。
+- [ ] 编写最终用户指南 (安装 whisper/ollama)。
+- [ ] 执行 `wails build` 生成 Release 版本。
 
 ---
 
