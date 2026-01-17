@@ -5,19 +5,16 @@
 # Project paths
 PROJECT_DIR := v2k-mac
 FRONTEND_DIR := $(PROJECT_DIR)/frontend
-BIN_DIR := $(PROJECT_DIR)/backend/dependency/bin/darwin_arm64
-SCRIPT_DIR := $(PROJECT_DIR)/scripts
 
 # Tools
 WAILS := wails
 GO := go
 NPM := npm
-NODE := node
 
 # App Details
 APP_NAME := v2k-mac
 # Try to extract version, default to 0.0.0 if not found
-VERSION := $(shell grep "version": $(PROJECT_DIR)/wails.json 2>/dev/null | sed 's/.*: \(.*\)\'",/\1/' || echo "0.0.0")
+VERSION := $(shell grep "version": $(PROJECT_DIR)/wails.json 2>/dev/null | sed 's/.*: "\(.*\)",/\1/' || echo "0.0.0")
 
 # Shell settings
 SHELL := /bin/bash
@@ -32,14 +29,14 @@ help: ## Show this help message
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%%-20s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # ------------------------------------------------------------------------------
 # Setup & Dependencies
 # ------------------------------------------------------------------------------
 
 .PHONY: setup
-setup: check-env install-wails deps-backend deps-frontend deps-binaries ## Full project setup (tools, libs, binaries)
+setup: check-env install-wails deps-backend deps-frontend ## Full project setup (tools, libs)
 
 .PHONY: check-env
 check-env: ## Check if required tools are installed
@@ -62,11 +59,6 @@ deps-frontend: ## Install Frontend dependencies
 	@echo "Installing Frontend dependencies..."
 	cd $(FRONTEND_DIR) && $(NPM) install
 
-.PHONY: deps-binaries
-deps-binaries: ## Download external binaries (yt-dlp, ffmpeg, AI engines) via Go script
-	@echo "Downloading external binaries..."
-	cd $(PROJECT_DIR) && $(GO) run scripts/deps.go
-
 # ------------------------------------------------------------------------------
 # Development
 # ------------------------------------------------------------------------------
@@ -80,7 +72,6 @@ lint: ## Run linters (Go vet & NPM lint if configured)
 	@echo "Linting Go..."
 	cd $(PROJECT_DIR) && $(GO) vet ./...
 	@echo "Linting Frontend..."
-	# Assuming a lint script exists in package.json, otherwise skipping
 	cd $(FRONTEND_DIR) && if [ -n "$$($(NPM) run | grep lint)" ]; then $(NPM) run lint; fi
 
 # ------------------------------------------------------------------------------
@@ -125,5 +116,3 @@ clean: ## Remove build artifacts and temp files
 release: test build ## Run tests and build for release
 	@echo "Release build complete."
 	@echo "App location: $(PROJECT_DIR)/build/bin/$(APP_NAME).app"
-	@# Optional: Add logic here to zip the .app or create a DMG
-	@# zip -r release/$(APP_NAME)-$(VERSION).zip $(PROJECT_DIR)/build/bin/$(APP_NAME).app
