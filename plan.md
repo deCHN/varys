@@ -1,4 +1,4 @@
-# Project Plan: v2k-mac (Auto-Clipper Native App)
+# Project Plan: Varys (Auto-Clipper Native App)
 
 **Version:** 0.3.0-draft
 **Branch:** `go_wails_mac`

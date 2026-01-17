@@ -12,7 +12,7 @@ GO := go
 NPM := npm
 
 # App Details
-APP_NAME := v2k-mac
+APP_NAME := Varys
 # Try to extract version, default to 0.0.0 if not found
 VERSION := $(shell grep "version": $(PROJECT_DIR)/wails.json 2>/dev/null | sed 's/.*: "\(.*\)",/\1/' || echo "0.0.0")
 
