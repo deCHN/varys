@@ -3,8 +3,8 @@
 # ==============================================================================
 
 # Project paths
-PROJECT_DIR := v2k-mac
-FRONTEND_DIR := $(PROJECT_DIR)/frontend
+PROJECT_DIR := .
+FRONTEND_DIR := frontend
 
 # Tools
 WAILS := wails

@@ -1,0 +1,82 @@
+package dependency
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+)
+
+// Manager handles external dependencies
+type Manager struct{}
+
+// NewManager creates a new dependency manager
+func NewManager() (*Manager, error) {
+	return &Manager{}, nil
+}
+
+// EnsureBinaries is a no-op as we rely on system binaries
+func (m *Manager) EnsureBinaries() error {
+	return nil
+}
+
+// GetBinaryPath returns the system path to a dependency.
+
+// Returns empty string if not found.
+
+func (m *Manager) GetBinaryPath(name string) string {
+
+	if path, found := m.CheckSystemDependency(name); found {
+
+		return path
+
+	}
+
+	return ""
+
+}
+
+
+
+// CheckSystemDependency looks for a binary in the system PATH and common Homebrew locations.
+
+// Returns the path and true if found, empty string and false otherwise.
+
+func (m *Manager) CheckSystemDependency(name string) (string, bool) {
+
+	// 1. Check system PATH
+
+	if path, err := exec.LookPath(name); err == nil {
+
+		return path, true
+
+	}
+
+
+
+	// 2. Check common Homebrew locations (macOS)
+
+	commonPaths := []string{
+
+		filepath.Join("/opt/homebrew/bin", name),
+
+		filepath.Join("/usr/local/bin", name),
+
+	}
+
+
+
+	for _, p := range commonPaths {
+
+		if _, err := os.Stat(p); err == nil {
+
+			return p, true
+
+		}
+
+	}
+
+
+
+	return "", false
+
+}
