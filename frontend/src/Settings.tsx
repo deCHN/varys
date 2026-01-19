@@ -44,8 +44,8 @@ export default function Settings() {
     };
 
     const StatusIcon = ({ ok }: { ok: boolean }) => (
-        <span className={`ml-2 ${ok ? 'text-green-400' : 'text-red-400'}`}>
-            {ok ? "✓" : "⚠️"}
+        <span className={`ml-2 text-xs font-bold ${ok ? 'text-green-400' : 'text-red-400'}`}>
+            {ok ? "OK" : "MISSING"}
         </span>
     );
 
