@@ -183,7 +183,11 @@ func (a *App) SubmitTask(url string) (taskResult string, taskErr error) {
 	var summary string
 	if transcript != "Transcription failed." {
 		logFunc("Analyzing text with AI...")
-		analysis, err := localAnalyzer.Analyze(transcript)
+		
+		analysis, err := localAnalyzer.Analyze(transcript, func(token string) {
+			runtime.EventsEmit(a.ctx, "task:analysis", token)
+		})
+		
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "Analysis failed: %v", err)
 			logFunc("Analysis failed (is Ollama running?).")

@@ -35,14 +35,14 @@ type Response struct {
 	Done     bool   `json:"done"`
 }
 
-func (a *Analyzer) Analyze(text string) (string, error) {
+func (a *Analyzer) Analyze(text string, onToken func(string)) (string, error) {
 	// Simple analysis prompt
 	prompt := fmt.Sprintf("Analyze the following text and provide a summary, key points, and tags in Simplified Chinese (zh-CN). Use Markdown format:\n\n%s", text)
 
 	reqBody := Request{
 		Model:  a.modelName,
 		Prompt: prompt,
-		Stream: false,
+		Stream: true, // Enable streaming
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -61,13 +61,30 @@ func (a *Analyzer) Analyze(text string) (string, error) {
 		return "", fmt.Errorf("ollama error %s: %s", resp.Status, string(body))
 	}
 
-	var result Response
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("failed to decode ollama response: %w", err)
+	var fullResponse strings.Builder
+	decoder := json.NewDecoder(resp.Body)
+
+	for {
+		var result Response
+		if err := decoder.Decode(&result); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return "", fmt.Errorf("failed to decode stream: %w", err)
+		}
+
+		fullResponse.WriteString(result.Response)
+		if onToken != nil {
+			onToken(result.Response)
+		}
+
+		if result.Done {
+			break
+		}
 	}
 
 	// Clean up markdown code blocks if the LLM wrapped the output
-	responseText := result.Response
+	responseText := fullResponse.String()
 	// Remove starting ```markdown or ```
 	if strings.HasPrefix(responseText, "```") {
 		// Remove first line
