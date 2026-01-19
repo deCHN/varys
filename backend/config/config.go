@@ -23,7 +23,7 @@ func NewManager() (*Manager, error) {
 		return nil, fmt.Errorf("failed to get home dir: %w", err)
 	}
 
-	configDir := filepath.Join(homeDir, ".v2k")
+	configDir := filepath.Join(homeDir, ".varys")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create config dir: %w", err)
 	}

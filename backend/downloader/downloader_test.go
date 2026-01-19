@@ -11,7 +11,7 @@ import (
 
 func TestDownloadAudio(t *testing.T) {
 	// 1. Setup temp env
-	tempDir, err := os.MkdirTemp("", "v2k_dl_test")
+	tempDir, err := os.MkdirTemp("", "dl_test")
 	if err != nil {
 		t.Fatal(err)
 	}

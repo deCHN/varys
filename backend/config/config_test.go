@@ -9,7 +9,7 @@ func TestConfigSaveLoad(t *testing.T) {
 	// Use a temp file for testing by overriding NewManager logic or just manually setting path
 	// Since NewManager uses UserHomeDir, let's just test Load/Save with a custom Manager
 	
-	f, err := os.CreateTemp("", "v2k_config_test.json")
+	f, err := os.CreateTemp("", "config_test.json")
 	if err != nil {
 		t.Fatal(err)
 	}

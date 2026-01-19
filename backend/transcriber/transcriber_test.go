@@ -10,7 +10,7 @@ import (
 
 func TestTranscribe(t *testing.T) {
 	// 1. Setup temp env
-	tempDir, err := os.MkdirTemp("", "v2k_transcriber_test")
+	tempDir, err := os.MkdirTemp("", "transcriber_test")
 	if err != nil {
 		t.Fatal(err)
 	}

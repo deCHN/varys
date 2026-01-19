@@ -86,7 +86,7 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) SubmitTask(url string) (string, error) {
 	runtime.LogInfo(a.ctx, "Received task for URL: "+url)
 
-	tempDir, err := os.MkdirTemp("", "v2k_task_")
+	tempDir, err := os.MkdirTemp("", "task_")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp dir: %w", err)
 	}

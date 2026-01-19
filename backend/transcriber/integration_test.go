@@ -22,7 +22,7 @@ func TestIntegrationTranscribe(t *testing.T) {
 	// Actually, easier to rely on hardcoded relative path if running from module root
 	projectRoot := "../.." // Assuming running from Varys/backend/transcriber
 	if _, err := os.Stat("go.mod"); err == nil {
-		projectRoot = "." // Running from v2k-mac root
+		projectRoot = "." // Running from Varys root
 	}
 
 	resDir := filepath.Join(projectRoot, "res")

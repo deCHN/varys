@@ -28,7 +28,7 @@ test('has title and captures screenshot', async ({ page }) => {
   await page.goto('/');
 
   // Expect a title "to contain" a substring.
-  // Note: The HTML title might be "v2k-mac" (from main.go) but the h1 is "v2k".
+  // Note: The HTML title might be "Varys" (from main.go) but the h1 is also "Varys".
   // Wails app title sets the window title. The web page title is in index.html.
   // Let's check the Tab button.
   await expect(page.getByText('Task')).toBeVisible();

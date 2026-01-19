@@ -9,7 +9,7 @@
 
 ## 1. 架构概览 (Architecture Overview)
 
-本项目旨在将原有的 Python 脚本 (`auto_obsidian.py`) 重构为高性能、本地化的 macOS 桌面应用。
+本项目旨在构建一个高性能、本地化的 macOS 桌面应用。
 
 ### 1.1 技术栈 (Tech Stack)
 *   **Frontend (UI)**: React, TypeScript, TailwindCSS (Via Wails)
@@ -71,17 +71,17 @@
 ## 4. 详细开发任务 (Development Tasks)
 
 ### Phase 1: 基础脚手架与依赖管理 (Infrastructure & Sidecar) - **[Completed]**
-- [x] 初始化 Wails 项目 (`wails init -n v2k-mac -t react-ts`)
+- [x] 初始化 Wails 项目 (`wails init -n varys -t react-ts`)
 - [x] **Dependency Manager**:
     - [x] 创建 `resources/bin/darwin_arm64/` 目录。
-    - [x] 实现 `ReleaseBinaries()`: 将内嵌的 `yt-dlp` 和 `ffmpeg` 释放到 `~/Library/Application Support/v2k/bin/`。
+    - [x] 实现 `ReleaseBinaries()`: 将内嵌的 `yt-dlp` 和 `ffmpeg` 释放到 `~/Library/Application Support/Varys/bin/`。
     - [x] 实现 `AutoUpdateDependencies()`: 异步执行 `yt-dlp -U`。
     - [x] 单元测试 `dependency_test.go`。
     - [x] **AI Dependency Script**: 更新 `scripts/deps.go` 支持 `tar.gz` 及特定路径提取，完成 `llama-server` 和 `whisper` 库文件的下载集成。
 - [x] 搭建简易 UI (输入框 + 按钮 + 控制台区域)。
 - [x] **UI Polish**:
     - [x] 移除 Wails Logo。
-    - [x] 调整标题为 "v2k"。
+    - [x] 调整标题为 "Varys"。
     - [x] 修复按钮样式。
     - [x] 调整初始窗口大小为 800x600。
 - [x] **Tests Setup**:

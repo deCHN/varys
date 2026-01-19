@@ -33,7 +33,7 @@ func TestSanitizeFilename(t *testing.T) {
 
 func TestSaveNote(t *testing.T) {
 	// Setup temp vault
-	vaultDir, err := os.MkdirTemp("", "v2k_vault_test")
+	vaultDir, err := os.MkdirTemp("", "vault_test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,9 +84,9 @@ func TestSaveNote(t *testing.T) {
 
 func TestMoveAudio(t *testing.T) {
 	// Setup temp vault and source dir
-	tempDir, _ := os.MkdirTemp("", "v2k_source")
+	tempDir, _ := os.MkdirTemp("", "source")
 	defer os.RemoveAll(tempDir)
-	vaultDir, _ := os.MkdirTemp("", "v2k_vault")
+	vaultDir, _ := os.MkdirTemp("", "vault")
 	defer os.RemoveAll(vaultDir)
 
 	// Create dummy audio
