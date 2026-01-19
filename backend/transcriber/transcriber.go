@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"Varys/backend/dependency"
 )
 
@@ -48,7 +49,9 @@ func (t *Transcriber) Transcribe(audioPath, modelPath string, onProgress func(st
 
 	// 4. Run Whisper
 	// Expects output: wavPath + ".txt"
-	cmd := exec.Command(binPath, "-m", modelPath, "-f", wavPath, "--output-txt", "--no-timestamps", "--language", "auto")
+	// We removed --no-timestamps to allow progress logging in stdout.
+	// We will clean timestamps from the file later.
+	cmd := exec.Command(binPath, "-m", modelPath, "-f", wavPath, "--output-txt", "--language", "auto")
 	
 	// Stream output
 	stdout, err := cmd.StdoutPipe()
@@ -80,7 +83,14 @@ func (t *Transcriber) Transcribe(audioPath, modelPath string, onProgress func(st
 	}
 	defer os.Remove(resultFile)
 
-	return string(content), nil
+	cleanedContent := t.cleanTimestamps(string(content))
+	return cleanedContent, nil
+}
+
+func (t *Transcriber) cleanTimestamps(text string) string {
+	// Regex to match [00:00:00.000 --> 00:00:05.000]
+	re := regexp.MustCompile(`\[\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}\]\s*`)
+	return re.ReplaceAllString(text, "")
 }
 
 func (t *Transcriber) convertToWav(input, output string) error {
