@@ -42,7 +42,7 @@ setup: check-env install-wails deps-backend deps-frontend ## Full project setup 
 check-env: ## Check if required tools are installed
 	@which $(GO) > /dev/null || (echo "Error: go is not installed" && exit 1)
 	@which $(NPM) > /dev/null || (echo "Error: npm is not installed" && exit 1)
-	@echo "✅ Environment checks passed."
+	@echo "Environment checks passed."
 
 .PHONY: install-wails
 install-wails: ## Install Wails CLI
@@ -116,3 +116,11 @@ clean: ## Remove build artifacts and temp files
 release: test build ## Run tests and build for release
 	@echo "Release build complete."
 	@echo "App location: $(PROJECT_DIR)/build/bin/$(APP_NAME).app"
+
+.PHONY: install
+install: build ## Build and Install the app to /Applications
+	@echo "Installing $(APP_NAME).app to /Applications..."
+	@rm -rf /Applications/$(APP_NAME).app
+	@cp -R $(PROJECT_DIR)/build/bin/$(APP_NAME).app /Applications/
+	@echo "$(APP_NAME) installed successfully."
+	@echo "You can now find it in your Applications folder or via Spotlight."
