@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, CheckDependencies, GetOllamaModels } from "../wailsjs/go/main/App";
+import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, CheckDependencies, GetOllamaModels, GetConfigPath } from "../wailsjs/go/main/App";
 
 interface Config {
     vault_path: string;
@@ -11,15 +11,24 @@ export default function Settings() {
     const [cfg, setCfg] = useState<Config>({ vault_path: '', model_path: '', llm_model: '' });
     const [deps, setDeps] = useState<any>({});
     const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+    const [configPath, setConfigPath] = useState<string>('');
+    const [status, setStatus] = useState<{msg: string, type: 'success' | 'error' | ''}>({msg: '', type: ''});
 
     useEffect(() => {
         GetConfig().then((c: any) => setCfg(c));
         CheckDependencies().then(setDeps);
         GetOllamaModels().then(setOllamaModels).catch(err => console.error("Failed to fetch models", err));
+        GetConfigPath().then(setConfigPath);
     }, []);
 
     const save = () => {
-        UpdateConfig(cfg as any).then(() => alert("Saved!"));
+        setStatus({msg: 'Saving...', type: ''});
+        UpdateConfig(cfg as any).then(() => {
+            setStatus({msg: `Saved to: ${configPath}`, type: 'success'});
+            setTimeout(() => setStatus({msg: '', type: ''}), 5000);
+        }).catch(err => {
+            setStatus({msg: `Error: ${err}`, type: 'error'});
+        });
     };
 
     const selectVault = () => {
@@ -104,8 +113,18 @@ export default function Settings() {
                 </div>
             </div>
 
-            <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                 <button className="btn" onClick={save}>Save Changes</button>
+                {status.msg && (
+                    <div style={{ 
+                        fontSize: '12px', 
+                        color: status.type === 'error' ? '#d93025' : '#188038',
+                        maxWidth: '100%',
+                        textAlign: 'right'
+                    }}>
+                        {status.msg}
+                    </div>
+                )}
             </div>
         </div>
     );

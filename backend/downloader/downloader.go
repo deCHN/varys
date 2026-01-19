@@ -25,10 +25,13 @@ func (d *Downloader) GetVideoTitle(url string) (string, error) {
 		return "", fmt.Errorf("yt-dlp not found")
 	}
 
-	cmd := exec.Command(ytPath, "--get-title", url)
-	// Output() returns standard output only. Stderr is not captured (warnings ignored).
+	cmd := exec.Command(ytPath, "--get-title", "--cookies-from-browser", "chrome", url)
+	// Output() returns standard output only.
 	out, err := cmd.Output()
 	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return "", fmt.Errorf("failed to get title: %s", string(exitErr.Stderr))
+		}
 		return "", fmt.Errorf("failed to get title: %w", err)
 	}
 	return strings.TrimSpace(string(out)), nil
@@ -48,6 +51,7 @@ func (d *Downloader) DownloadAudio(url string, outputDir string, onProgress func
 
 	args := []string{
 		"-x", "--audio-format", "m4a",
+		"--cookies-from-browser", "chrome",
 		"--no-playlist", "--newline", // --newline helps with progress parsing
 		"-o", outputTemplate,
 		url,

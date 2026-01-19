@@ -18,18 +18,18 @@ type Manager struct {
 }
 
 func NewManager() (*Manager, error) {
-	homeDir, err := os.UserHomeDir()
+	configDir, err := os.UserConfigDir()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get home dir: %w", err)
+		return nil, fmt.Errorf("failed to get user config dir: %w", err)
 	}
 
-	configDir := filepath.Join(homeDir, ".varys")
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create config dir: %w", err)
+	appDir := filepath.Join(configDir, "Varys")
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create app config dir: %w", err)
 	}
 
 	return &Manager{
-		configPath: filepath.Join(configDir, "config.json"),
+		configPath: filepath.Join(appDir, "config.json"),
 	}, nil
 }
 
@@ -61,4 +61,8 @@ func (m *Manager) Save(cfg *Config) error {
 	}
 
 	return nil
+}
+
+func (m *Manager) GetConfigPath() string {
+	return m.configPath
 }

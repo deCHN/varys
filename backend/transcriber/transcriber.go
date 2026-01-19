@@ -18,7 +18,7 @@ func NewTranscriber(dep *dependency.Manager) *Transcriber {
 
 func (t *Transcriber) Transcribe(audioPath, modelPath string, onProgress func(string)) (string, error) {
 	// 1. Find binary
-	candidates := []string{"whisper-cpp", "whisper-cli", "whisper-main", "whisper", "main"}
+	candidates := []string{"whisper-cli", "whisper-cpp", "whisper-main", "whisper", "main"}
 	var binPath string
 	for _, name := range candidates {
 		if p, found := t.dep.CheckSystemDependency(name); found {

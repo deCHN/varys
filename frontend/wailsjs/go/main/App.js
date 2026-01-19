@@ -10,6 +10,10 @@ export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }
 
+export function GetConfigPath() {
+  return window['go']['main']['App']['GetConfigPath']();
+}
+
 export function GetOllamaModels() {
   return window['go']['main']['App']['GetOllamaModels']();
 }

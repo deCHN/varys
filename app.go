@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 	"Varys/backend/analyzer"
 	"Varys/backend/config"
@@ -83,8 +85,48 @@ func (a *App) startup(ctx context.Context) {
 }
 
 // SubmitTask starts the pipeline
-func (a *App) SubmitTask(url string) (string, error) {
+func (a *App) SubmitTask(url string) (taskResult string, taskErr error) {
 	runtime.LogInfo(a.ctx, "Received task for URL: "+url)
+
+	var logBuffer []string
+	hasErrorLog := false
+	
+	// logFunc captures logs and emits them
+	logFunc := func(msg string) {
+		logBuffer = append(logBuffer, fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), msg))
+		runtime.EventsEmit(a.ctx, "task:log", msg)
+		
+		msgLower := strings.ToLower(msg)
+		if strings.Contains(msgLower, "error") || strings.Contains(msgLower, "failed") {
+			hasErrorLog = true
+		}
+	}
+
+	// Dump logs on exit if error occurred
+	defer func() {
+		if taskErr != nil || hasErrorLog {
+			timestamp := time.Now().Format("2006-01-02_15-04-05")
+			logContent := strings.Join(logBuffer, "\n")
+			if taskErr != nil {
+				logContent += fmt.Sprintf("\n\n[FATAL ERROR] %v", taskErr)
+			}
+			
+			// Save error_<date>.log
+			pwd, _ := os.Getwd()
+			debugDir := filepath.Join(pwd, ".debug")
+			os.MkdirAll(debugDir, 0755)
+
+			filename := fmt.Sprintf("error_%s.log", timestamp)
+			filePath := filepath.Join(debugDir, filename)
+			os.WriteFile(filePath, []byte(logContent), 0644)
+			
+			// Copy to error_latest.log
+			latestPath := filepath.Join(debugDir, "error_latest.log")
+			os.WriteFile(latestPath, []byte(logContent), 0644)
+			
+			logFunc(fmt.Sprintf("Logs dumped to %s", filePath))
+		}
+	}()
 
 	tempDir, err := os.MkdirTemp("", "task_")
 	if err != nil {
@@ -96,37 +138,37 @@ func (a *App) SubmitTask(url string) (string, error) {
 	cfg, _ := a.cfgManager.Load()
 
 	// 0. Get Title
-	runtime.EventsEmit(a.ctx, "task:log", "Fetching video title...")
+	logFunc("Fetching video title...")
 	videoTitle, err := a.downloader.GetVideoTitle(url)
 	if err != nil {
 		videoTitle = "Task_" + time.Now().Format("20060102_150405")
-		runtime.EventsEmit(a.ctx, "task:log", fmt.Sprintf("Warning: Failed to get title (%v), using fallback: %s", err, videoTitle))
+		logFunc(fmt.Sprintf("Warning: Failed to get title (%v), using fallback: %s", err, videoTitle))
 	} else {
-		runtime.EventsEmit(a.ctx, "task:log", fmt.Sprintf("Title found: %s", videoTitle))
+		logFunc(fmt.Sprintf("Title found: %s", videoTitle))
 	}
 
 	// 1. Download
-	runtime.EventsEmit(a.ctx, "task:log", fmt.Sprintf("Downloading audio from %s...", url))
+	logFunc(fmt.Sprintf("Downloading audio from %s...", url))
 	audioPath, err := a.downloader.DownloadAudio(url, tempDir, func(msg string) {
-		runtime.EventsEmit(a.ctx, "task:log", "[DL] "+msg)
+		logFunc("[DL] "+msg)
 	})
 	if err != nil {
 		return "", fmt.Errorf("download failed: %w", err)
 	}
-	runtime.EventsEmit(a.ctx, "task:log", fmt.Sprintf("Download complete: %s", audioPath))
+	logFunc(fmt.Sprintf("Download complete: %s", audioPath))
 
 	// 2. Transcribe
-	runtime.EventsEmit(a.ctx, "task:log", "Transcribing audio (this may take a while)...")
+	logFunc("Transcribing audio (this may take a while)...")
 	// Pass model from config dynamically
 	transcript, err := a.transcriber.Transcribe(audioPath, cfg.ModelPath, func(msg string) {
-		runtime.EventsEmit(a.ctx, "task:log", "[Whisper] "+msg)
+		logFunc("[Whisper] "+msg)
 	})
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Transcription failed: %v", err)
-		runtime.EventsEmit(a.ctx, "task:log", "Transcription failed (check config/deps). Skipping analysis.")
+		logFunc("Transcription failed (check config/deps). Skipping analysis.")
 		transcript = "Transcription failed."
 	} else {
-		runtime.EventsEmit(a.ctx, "task:log", "Transcription complete.")
+		logFunc("Transcription complete.")
 	}
 
 	// 3. Analyze
@@ -140,15 +182,15 @@ func (a *App) SubmitTask(url string) (string, error) {
 
 	var summary string
 	if transcript != "Transcription failed." {
-		runtime.EventsEmit(a.ctx, "task:log", "Analyzing text with AI...")
+		logFunc("Analyzing text with AI...")
 		analysis, err := localAnalyzer.Analyze(transcript)
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "Analysis failed: %v", err)
-			runtime.EventsEmit(a.ctx, "task:log", "Analysis failed (is Ollama running?).")
+			logFunc("Analysis failed (is Ollama running?).")
 			summary = "Analysis failed."
 		} else {
 			summary = analysis
-			runtime.EventsEmit(a.ctx, "task:log", "Analysis complete.")
+			logFunc("Analysis complete.")
 		}
 	}
 
@@ -193,6 +235,14 @@ func (a *App) GetConfig() (*config.Config, error) {
 		return nil, fmt.Errorf("config manager not initialized")
 	}
 	return a.cfgManager.Load()
+}
+
+// GetConfigPath returns the absolute path to the config file
+func (a *App) GetConfigPath() (string, error) {
+	if a.cfgManager == nil {
+		return "", fmt.Errorf("config manager not initialized")
+	}
+	return a.cfgManager.GetConfigPath(), nil
 }
 
 type DependencyStatus struct {

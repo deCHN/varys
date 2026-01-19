@@ -7,6 +7,8 @@ export function CheckDependencies():Promise<main.DependencyStatus>;
 
 export function GetConfig():Promise<config.Config>;
 
+export function GetConfigPath():Promise<string>;
+
 export function GetOllamaModels():Promise<Array<string>>;
 
 export function SelectModelPath():Promise<string>;
