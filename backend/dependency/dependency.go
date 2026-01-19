@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // Manager handles external dependencies
@@ -11,6 +12,23 @@ type Manager struct{}
 
 // NewManager creates a new dependency manager
 func NewManager() (*Manager, error) {
+	// Professional Pragmatic Fix: GUI apps on macOS don't inherit the shell PATH.
+	// We manually inject common Homebrew and user paths to ensure dependencies
+	// like 'deno' (for yt-dlp challenges) or 'ffmpeg' are found.
+	path := os.Getenv("PATH")
+	additionalPaths := []string{
+		"/opt/homebrew/bin",
+		"/usr/local/bin",
+		filepath.Join(os.Getenv("HOME"), ".local/bin"),
+	}
+
+	for _, p := range additionalPaths {
+		if !strings.Contains(path, p) {
+			path = p + string(os.PathListSeparator) + path
+		}
+	}
+	os.Setenv("PATH", path)
+
 	return &Manager{}, nil
 }
 
