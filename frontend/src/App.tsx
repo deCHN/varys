@@ -34,8 +34,11 @@ function App() {
 
             {/* Main Content Area */}
             <main className="flex-1 overflow-hidden flex flex-col relative">
-                <div className="absolute inset-0 overflow-y-auto">
-                    {view === 'dashboard' ? <Dashboard /> : <Settings />}
+                <div className={`absolute inset-0 overflow-y-auto ${view === 'dashboard' ? 'block' : 'hidden'}`}>
+                    <Dashboard />
+                </div>
+                <div className={`absolute inset-0 overflow-y-auto ${view === 'settings' ? 'block' : 'hidden'}`}>
+                    <Settings />
                 </div>
             </main>
         </div>
