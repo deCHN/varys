@@ -44,84 +44,102 @@ export default function Settings() {
     };
 
     const StatusIcon = ({ ok }: { ok: boolean }) => (
-        <span style={{ color: ok ? '#188038' : '#d93025', marginLeft: '8px' }}>
+        <span className={`ml-2 ${ok ? 'text-green-400' : 'text-red-400'}`}>
             {ok ? "✓" : "⚠️"}
         </span>
     );
 
     return (
-        <div style={{ padding: '24px', maxWidth: '700px', margin: '0 auto' }}>
+        <div className="max-w-2xl mx-auto p-8 w-full">
             
-            <div className="section">
-                <h3>Paths</h3>
+            <div className="mb-10">
+                <h3 className="text-lg font-semibold text-slate-200 mb-6 border-b border-slate-800 pb-2">Configuration</h3>
                 
-                <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 500 }}>Obsidian Vault</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <input className="input" value={cfg.vault_path} readOnly style={{ flex: 1, background: '#f8f9fa' }} />
-                        <button className="btn" style={{ background: '#fff', color: '#1a73e8', border: '1px solid #dadce0' }} onClick={selectVault}>Browse</button>
+                <div className="space-y-6">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-2">Obsidian Vault</label>
+                        <div className="flex gap-2">
+                            <input 
+                                className="flex-1 bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500" 
+                                value={cfg.vault_path} 
+                                readOnly 
+                            />
+                            <button 
+                                className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-slate-600" 
+                                onClick={selectVault}
+                            >
+                                Browse
+                            </button>
+                        </div>
                     </div>
-                </div>
 
-                <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 500 }}>Whisper Model (.bin)</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <input className="input" value={cfg.model_path} readOnly style={{ flex: 1, background: '#f8f9fa' }} />
-                        <button className="btn" style={{ background: '#fff', color: '#1a73e8', border: '1px solid #dadce0' }} onClick={selectModel}>Browse</button>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-2">Whisper Model (.bin)</label>
+                        <div className="flex gap-2">
+                            <input 
+                                className="flex-1 bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500" 
+                                value={cfg.model_path} 
+                                readOnly 
+                            />
+                            <button 
+                                className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-slate-600" 
+                                onClick={selectModel}
+                            >
+                                Browse
+                            </button>
+                        </div>
                     </div>
-                </div>
-                
-                <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 500 }}>Ollama Model</label>
-                    {ollamaModels.length > 0 ? (
-                        <select 
-                            className="input" 
-                            value={cfg.llm_model} 
-                            onChange={e => setCfg({...cfg, llm_model: e.target.value})} 
-                            style={{ width: '100%' }}
-                        >
-                            <option value="" disabled>Select a model...</option>
-                            {ollamaModels.map(m => <option key={m} value={m}>{m}</option>)}
-                        </select>
-                    ) : (
-                        <input 
-                            className="input" 
-                            value={cfg.llm_model} 
-                            onChange={e => setCfg({...cfg, llm_model: e.target.value})} 
-                            placeholder="Type model name (e.g. qwen2.5:7b)"
-                            style={{ width: '100%' }} 
-                        />
-                    )}
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-2">Ollama Model</label>
+                        {ollamaModels.length > 0 ? (
+                            <select 
+                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none" 
+                                value={cfg.llm_model} 
+                                onChange={e => setCfg({...cfg, llm_model: e.target.value})} 
+                            >
+                                <option value="" disabled>Select a model...</option>
+                                {ollamaModels.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                        ) : (
+                            <input 
+                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500" 
+                                value={cfg.llm_model} 
+                                onChange={e => setCfg({...cfg, llm_model: e.target.value})} 
+                                placeholder="Type model name (e.g. qwen2.5:7b)"
+                            />
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div className="section">
-                <h3>System Check</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
-                    <div style={{ padding: '12px', border: '1px solid #dadce0', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>yt-dlp</span> <StatusIcon ok={deps.yt_dlp} />
+            <div className="mb-10">
+                <h3 className="text-lg font-semibold text-slate-200 mb-6 border-b border-slate-800 pb-2">System Check</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
+                        <span className="text-slate-400">yt-dlp</span> <StatusIcon ok={deps.yt_dlp} />
                     </div>
-                    <div style={{ padding: '12px', border: '1px solid #dadce0', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>ffmpeg</span> <StatusIcon ok={deps.ffmpeg} />
+                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
+                        <span className="text-slate-400">ffmpeg</span> <StatusIcon ok={deps.ffmpeg} />
                     </div>
-                    <div style={{ padding: '12px', border: '1px solid #dadce0', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>whisper-cpp</span> <StatusIcon ok={deps.whisper} />
+                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
+                        <span className="text-slate-400">whisper-cpp</span> <StatusIcon ok={deps.whisper} />
                     </div>
-                    <div style={{ padding: '12px', border: '1px solid #dadce0', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>ollama</span> <StatusIcon ok={deps.ollama} />
+                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
+                        <span className="text-slate-400">ollama</span> <StatusIcon ok={deps.ollama} />
                     </div>
                 </div>
             </div>
 
-            <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                <button className="btn" onClick={save}>Save Changes</button>
+            <div className="flex flex-col items-end gap-3 pt-6 border-t border-slate-800">
+                <button 
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-900/20 active:scale-95" 
+                    onClick={save}
+                >
+                    Save Changes
+                </button>
                 {status.msg && (
-                    <div style={{ 
-                        fontSize: '12px', 
-                        color: status.type === 'error' ? '#d93025' : '#188038',
-                        maxWidth: '100%',
-                        textAlign: 'right'
-                    }}>
+                    <div className={`text-xs ${status.type === 'error' ? 'text-red-400' : 'text-green-400'} text-right max-w-full break-all`}>
                         {status.msg}
                     </div>
                 )}
