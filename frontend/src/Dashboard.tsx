@@ -7,6 +7,7 @@ export default function Dashboard() {
     const [url, setUrl] = useState('');
     const [logs, setLogs] = useState<string[]>([]);
     const [analysisStream, setAnalysisStream] = useState("");
+    const inputRef = useRef<HTMLInputElement>(null);
     const logEndRef = useRef<HTMLDivElement>(null);
     const streamEndRef = useRef<HTMLDivElement>(null);
 
@@ -18,6 +19,11 @@ export default function Dashboard() {
     }
 
     useEffect(() => {
+        // Auto-focus input on mount
+        if (inputRef.current) {
+            inputRef.current.focus();
+        }
+
         const unsubLog = EventsOn("task:log", (msg: string) => addLog(msg));
         const unsubAnalysis = EventsOn("task:analysis", (chunk: string) => {
             setAnalysisStream(prev => prev + chunk);
@@ -57,6 +63,7 @@ export default function Dashboard() {
             {/* Input Section */}
             <div className="flex gap-3 mb-6">
                 <input 
+                    ref={inputRef}
                     className="flex-1 bg-slate-800 border border-slate-700 text-slate-100 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 transition-all"
                     value={url} 
                     onChange={updateUrl} 
