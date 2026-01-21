@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, CheckDependencies, GetOllamaModels, GetConfigPath } from "../wailsjs/go/main/App";
+import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, CheckDependencies, GetOllamaModels, GetConfigPath, GetAppVersion } from "../wailsjs/go/main/App";
 
 interface Config {
     vault_path: string;
@@ -12,6 +12,7 @@ export default function Settings() {
     const [deps, setDeps] = useState<any>({});
     const [ollamaModels, setOllamaModels] = useState<string[]>([]);
     const [configPath, setConfigPath] = useState<string>('');
+    const [version, setVersion] = useState<string>('');
     const [status, setStatus] = useState<{msg: string, type: 'success' | 'error' | ''}>({msg: '', type: ''});
 
     useEffect(() => {
@@ -19,6 +20,7 @@ export default function Settings() {
         CheckDependencies().then(setDeps);
         GetOllamaModels().then(setOllamaModels).catch(err => console.error("Failed to fetch models", err));
         GetConfigPath().then(setConfigPath);
+        GetAppVersion().then(setVersion);
     }, []);
 
     const save = () => {
@@ -143,6 +145,10 @@ export default function Settings() {
                         {status.msg}
                     </div>
                 )}
+            </div>
+            
+            <div className="mt-8 text-center text-xs text-slate-600">
+                Varys {version}
             </div>
         </div>
     );

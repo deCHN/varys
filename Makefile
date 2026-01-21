@@ -119,8 +119,10 @@ release: test build ## Run tests and build for release
 
 .PHONY: install
 install: build ## Build and Install the app to /Applications
+	@echo "Stopping $(APP_NAME) if running..."
+	-pkill -x "$(APP_NAME)" || true
 	@echo "Installing $(APP_NAME).app to /Applications..."
-	@rm -rf /Applications/$(APP_NAME).app
-	@cp -R $(PROJECT_DIR)/build/bin/$(APP_NAME).app /Applications/
+	rm -rf "/Applications/$(APP_NAME).app"
+	cp -R "$(PROJECT_DIR)/build/bin/$(APP_NAME).app" /Applications/
 	@echo "$(APP_NAME) installed successfully."
 	@echo "You can now find it in your Applications folder or via Spotlight."

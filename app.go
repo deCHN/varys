@@ -233,6 +233,11 @@ func (a *App) SubmitTask(url string) (taskResult string, taskErr error) {
 	return fmt.Sprintf("Saved to: %s", notePath), nil
 }
 
+// GetAppVersion returns the current application version
+func (a *App) GetAppVersion() string {
+	return "v0.3.0"
+}
+
 // GetConfig returns current config
 func (a *App) GetConfig() (*config.Config, error) {
 	if a.cfgManager == nil {

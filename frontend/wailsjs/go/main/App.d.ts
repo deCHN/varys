@@ -5,6 +5,8 @@ import {config} from '../models';
 
 export function CheckDependencies():Promise<main.DependencyStatus>;
 
+export function GetAppVersion():Promise<string>;
+
 export function GetConfig():Promise<config.Config>;
 
 export function GetConfigPath():Promise<string>;
