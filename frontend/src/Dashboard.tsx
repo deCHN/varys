@@ -13,6 +13,12 @@ export default function Dashboard() {
 
     const updateUrl = (e: any) => setUrl(e.target.value);
 
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            processUrl();
+        }
+    };
+
     function addLog(msg: string) {
         const time = new Date().toLocaleTimeString([], { hour12: false });
         setLogs(prev => [...prev, `[${time}] ${msg}`]);
@@ -67,6 +73,7 @@ export default function Dashboard() {
                     className="flex-1 bg-slate-800 border border-slate-700 text-slate-100 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 transition-all"
                     value={url} 
                     onChange={updateUrl} 
+                    onKeyDown={handleKeyDown}
                     placeholder="Enter YouTube/Bilibili URL"
                 />
                 <button 
