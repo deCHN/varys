@@ -17,6 +17,6 @@ export function SelectModelPath():Promise<string>;
 
 export function SelectVaultPath():Promise<string>;
 
-export function SubmitTask(arg1:string):Promise<string>;
+export function SubmitTask(arg1:string,arg2:boolean):Promise<string>;
 
 export function UpdateConfig(arg1:config.Config):Promise<void>;

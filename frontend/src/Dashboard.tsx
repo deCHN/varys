@@ -5,6 +5,7 @@ import {EventsOn} from "../wailsjs/runtime";
 export default function Dashboard() {
     const [resultText, setResultText] = useState("");
     const [url, setUrl] = useState('');
+    const [audioOnly, setAudioOnly] = useState(false);
     const [logs, setLogs] = useState<string[]>([]);
     const [analysisStream, setAnalysisStream] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
@@ -53,9 +54,9 @@ export default function Dashboard() {
         setLogs([]);
         setAnalysisStream("");
         setResultText("Processing...");
-        addLog(`Processing URL: ${url}`);
+        addLog(`Processing URL: ${url} (AudioOnly: ${audioOnly})`);
         
-        SubmitTask(url).then((response: string) => {
+        SubmitTask(url, audioOnly).then((response: string) => {
              addLog(`Backend Response: ${response}`);
              setResultText("Task completed");
         }).catch((err: any) => {
@@ -67,17 +68,37 @@ export default function Dashboard() {
     return (
         <div className="flex flex-col h-full max-w-5xl mx-auto p-6 w-full">
             {/* Input Section */}
-            <div className="flex gap-3 mb-6">
-                <input 
-                    ref={inputRef}
-                    className="flex-1 bg-slate-800 border border-slate-700 text-slate-100 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 transition-all"
-                    value={url} 
-                    onChange={updateUrl} 
-                    onKeyDown={handleKeyDown}
-                    placeholder="Enter YouTube/Bilibili URL"
-                />
+            <div className="flex gap-3 mb-6 items-center">
+                <div className="flex-1 relative">
+                    <input 
+                        ref={inputRef}
+                        className="w-full bg-slate-800 border border-slate-700 text-slate-100 pl-4 pr-32 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 transition-all"
+                        value={url} 
+                        onChange={updateUrl} 
+                        onKeyDown={handleKeyDown}
+                        placeholder="Enter YouTube/Bilibili URL"
+                    />
+                    
+                    {/* Integrated Toggle Switch */}
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center bg-slate-700/50 rounded-full px-2 py-1">
+                        <label className="flex items-center cursor-pointer gap-2 select-none">
+                            <span className={`text-xs font-medium transition-colors ${audioOnly ? 'text-emerald-400' : 'text-slate-400'}`}>Audio Only</span>
+                            <div className="relative">
+                                <input 
+                                    type="checkbox" 
+                                    className="sr-only peer"
+                                    checked={audioOnly}
+                                    onChange={(e) => setAudioOnly(e.target.checked)}
+                                />
+                                <div className="w-7 h-4 bg-slate-600 rounded-full peer peer-checked:bg-emerald-500/80 peer-focus:ring-2 peer-focus:ring-emerald-800 transition-colors"></div>
+                                <div className="absolute left-[2px] top-[2px] bg-white w-3 h-3 rounded-full transition-transform peer-checked:translate-x-3"></div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
                 <button 
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-lg shadow-blue-900/20 active:scale-95"
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-lg shadow-blue-900/20 active:scale-95 whitespace-nowrap"
                     onClick={processUrl}
                 >
                     Process

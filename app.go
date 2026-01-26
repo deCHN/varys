@@ -85,8 +85,8 @@ func (a *App) startup(ctx context.Context) {
 }
 
 // SubmitTask starts the pipeline
-func (a *App) SubmitTask(url string) (taskResult string, taskErr error) {
-	runtime.LogInfo(a.ctx, "Received task for URL: "+url)
+func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr error) {
+	runtime.LogInfo(a.ctx, fmt.Sprintf("Received task for URL: %s (AudioOnly: %v)", url, audioOnly))
 
 	var logBuffer []string
 	hasErrorLog := false
@@ -148,19 +148,19 @@ func (a *App) SubmitTask(url string) (taskResult string, taskErr error) {
 	}
 
 	// 1. Download
-	logFunc(fmt.Sprintf("Downloading audio from %s...", url))
-	audioPath, err := a.downloader.DownloadAudio(url, tempDir, func(msg string) {
+	logFunc(fmt.Sprintf("Downloading media from %s...", url))
+	mediaPath, err := a.downloader.DownloadMedia(url, tempDir, audioOnly, func(msg string) {
 		logFunc("[DL] "+msg)
 	})
 	if err != nil {
 		return "", fmt.Errorf("download failed: %w", err)
 	}
-	logFunc(fmt.Sprintf("Download complete: %s", audioPath))
+	logFunc(fmt.Sprintf("Download complete: %s", mediaPath))
 
 	// 2. Transcribe
 	logFunc("Transcribing audio (this may take a while)...")
 	// Pass model from config dynamically
-	transcript, err := a.transcriber.Transcribe(audioPath, cfg.ModelPath, func(msg string) {
+	transcript, err := a.transcriber.Transcribe(mediaPath, cfg.ModelPath, func(msg string) {
 		logFunc("[Whisper] "+msg)
 	})
 	if err != nil {
@@ -209,9 +209,9 @@ func (a *App) SubmitTask(url string) (taskResult string, taskErr error) {
 
 	safeTitle := localStorage.SanitizeFilename(videoTitle)
 	
-	finalAudio, err := localStorage.MoveAudio(audioPath, safeTitle)
+	finalMedia, err := localStorage.MoveMedia(mediaPath, safeTitle)
 	if err != nil {
-		return "", fmt.Errorf("failed to move audio: %w", err)
+		return "", fmt.Errorf("failed to move media: %w", err)
 	}
 
 	noteData := storage.NoteData{
@@ -220,7 +220,7 @@ func (a *App) SubmitTask(url string) (taskResult string, taskErr error) {
 		Language:     "en",
 		Summary:      summary,
 		OriginalText: transcript,
-		AudioFile:    finalAudio,
+		AudioFile:    finalMedia,
 		AssetsFolder: "assets",
 		CreatedTime:  time.Now().Format("2006-01-02 15:04"),
 	}

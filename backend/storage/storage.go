@@ -64,15 +64,16 @@ func (m *Manager) SanitizeFilename(name string) string {
 	return name
 }
 
-// MoveAudio moves the audio file to vault/assets
-func (m *Manager) MoveAudio(sourcePath string, targetName string) (string, error) {
+// MoveMedia moves the media file (audio/video) to vault/assets
+func (m *Manager) MoveMedia(sourcePath string, targetName string) (string, error) {
 	// Default assets folder name
 	assetsDir := filepath.Join(m.VaultPath, "assets")
 	if err := os.MkdirAll(assetsDir, 0755); err != nil {
 		return "", err
 	}
 
-	finalName := targetName + ".m4a"
+	ext := filepath.Ext(sourcePath)
+	finalName := targetName + ext
 	destPath := filepath.Join(assetsDir, finalName)
 
 	// Remove dest if exists
@@ -137,7 +138,7 @@ tags:
 
 ---
 
-## 音频回放
+## 媒体回放
 ![[{{.AssetsFolder}}/{{.AudioFile}}]]
 
 ---

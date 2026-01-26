@@ -82,7 +82,7 @@ func TestSaveNote(t *testing.T) {
 	}
 }
 
-func TestMoveAudio(t *testing.T) {
+func TestMoveMedia(t *testing.T) {
 	// Setup temp vault and source dir
 	tempDir, _ := os.MkdirTemp("", "source")
 	defer os.RemoveAll(tempDir)
@@ -95,9 +95,9 @@ func TestMoveAudio(t *testing.T) {
 
 	mgr := NewManager(vaultDir)
 	
-	finalName, err := mgr.MoveAudio(sourceAudio, "Final_Name")
+	finalName, err := mgr.MoveMedia(sourceAudio, "Final_Name")
 	if err != nil {
-		t.Fatalf("MoveAudio failed: %v", err)
+		t.Fatalf("MoveMedia failed: %v", err)
 	}
 
 	if finalName != "Final_Name.m4a" {

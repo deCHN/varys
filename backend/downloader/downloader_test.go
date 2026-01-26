@@ -9,7 +9,7 @@ import (
 	"Varys/backend/dependency"
 )
 
-func TestDownloadAudio(t *testing.T) {
+func TestDownloadMedia(t *testing.T) {
 	// 1. Setup temp env
 	tempDir, err := os.MkdirTemp("", "dl_test")
 	if err != nil {
@@ -68,9 +68,10 @@ func TestDownloadAudio(t *testing.T) {
 
 	// 4. Run Download
 	// We use tempDir as outputDir
-	resultPath, err := dl.DownloadAudio("http://fake.url", tempDir, nil)
+	// audioOnly = true for this test
+	resultPath, err := dl.DownloadMedia("http://fake.url", tempDir, true, nil)
 	if err != nil {
-		t.Fatalf("DownloadAudio failed: %v", err)
+		t.Fatalf("DownloadMedia failed: %v", err)
 	}
 
 	// 5. Verify

@@ -30,8 +30,8 @@ export function SelectVaultPath() {
   return window['go']['main']['App']['SelectVaultPath']();
 }
 
-export function SubmitTask(arg1) {
-  return window['go']['main']['App']['SubmitTask'](arg1);
+export function SubmitTask(arg1, arg2) {
+  return window['go']['main']['App']['SubmitTask'](arg1, arg2);
 }
 
 export function UpdateConfig(arg1) {

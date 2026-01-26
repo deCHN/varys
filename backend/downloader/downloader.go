@@ -3,7 +3,6 @@ package downloader
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -37,24 +36,39 @@ func (d *Downloader) GetVideoTitle(url string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// DownloadAudio downloads the audio from the given URL to the output directory.
+// DownloadMedia downloads the media (audio/video) from the given URL to the output directory.
 // Returns the absolute path to the downloaded file.
-func (d *Downloader) DownloadAudio(url string, outputDir string, onProgress func(string)) (string, error) {
+func (d *Downloader) DownloadMedia(url string, outputDir string, audioOnly bool, onProgress func(string)) (string, error) {
 	ytPath := d.dep.GetBinaryPath("yt-dlp")
 	if ytPath == "" {
 		return "", fmt.Errorf("yt-dlp binary not found")
 	}
 
-	// Output template: outputDir/audio.%(ext)s
-	tempBase := "temp_audio"
-	outputTemplate := filepath.Join(outputDir, tempBase+".%(ext)s")
+	tempBase := "temp_media"
+	var outputTemplate string
+	var args []string
 
-	args := []string{
-		"-x", "--audio-format", "m4a",
-		"--cookies-from-browser", "chrome",
-		"--no-playlist", "--newline", // --newline helps with progress parsing
-		"-o", outputTemplate,
-		url,
+	if audioOnly {
+		// Audio Mode: Force m4a
+		outputTemplate = filepath.Join(outputDir, tempBase+".%(ext)s")
+		args = []string{
+			"-x", "--audio-format", "m4a",
+			"--cookies-from-browser", "chrome",
+			"--no-playlist", "--newline",
+			"-o", outputTemplate,
+			url,
+		}
+	} else {
+		// Video Mode: Best mp4
+		// We use -S "ext" to prefer mp4 container for better compatibility
+		outputTemplate = filepath.Join(outputDir, tempBase+".%(ext)s")
+		args = []string{
+			"-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+			"--cookies-from-browser", "chrome",
+			"--no-playlist", "--newline",
+			"-o", outputTemplate,
+			url,
+		}
 	}
 
 	cmd := exec.Command(ytPath, args...)
@@ -89,11 +103,14 @@ func (d *Downloader) DownloadAudio(url string, outputDir string, onProgress func
 		return "", fmt.Errorf("download command failed: %w", err)
 	}
 
-	// Verify file exists. Expected to be .m4a
-	expectedFile := filepath.Join(outputDir, tempBase+".m4a")
-	if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
-		return "", fmt.Errorf("download success but file not found at %s", expectedFile)
+	// Verify file exists
+	// For video, we might get .mp4 or .mkv depending on fallback, but we requested mp4 preference.
+	// We'll search for the file pattern.
+	files, err := filepath.Glob(filepath.Join(outputDir, tempBase+".*"))
+	if err != nil || len(files) == 0 {
+		return "", fmt.Errorf("download success but output file not found")
 	}
-
-	return expectedFile, nil
+	
+	// Return the first match (likely the only one)
+	return files[0], nil
 }
