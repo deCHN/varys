@@ -159,8 +159,9 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 
 	// 2. Transcribe
 	logFunc("Transcribing audio (this may take a while)...")
+	var sourceLang string
 	// Pass model from config dynamically
-	transcript, err := a.transcriber.Transcribe(mediaPath, cfg.ModelPath, func(msg string) {
+	transcript, sourceLang, err := a.transcriber.Transcribe(mediaPath, cfg.ModelPath, func(msg string) {
 		logFunc("[Whisper] "+msg)
 	})
 	if err != nil {
@@ -168,7 +169,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 		logFunc("Transcription failed (check config/deps). Skipping analysis.")
 		transcript = "Transcription failed."
 	} else {
-		logFunc("Transcription complete.")
+		logFunc(fmt.Sprintf("Transcription complete (Detected Language: %s).", sourceLang))
 	}
 
 	// 3. Analyze
@@ -185,18 +186,37 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 
 	var summary string
 	var analysis *analyzer.AnalysisResult
-	var translatedText string
+	var translationPairs []analyzer.TranslationPair
 
 	if transcript != "Transcription failed." {
-		// A. Translate
-		logFunc(fmt.Sprintf("Translating text to %s...", targetLang))
-		var err error
-		translatedText, err = localAnalyzer.Translate(transcript, targetLang)
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "Translation failed: %v", err)
-			logFunc("Translation failed.")
-		} else {
-			logFunc("Translation complete.")
+		// Smart Translation Logic
+		shouldTranslate := true
+		
+		// 1. Check if source matches target (Basic mapping)
+		// Whisper returns 2-letter codes: zh, en, ja, es...
+		// Target is full name: Simplified Chinese, English...
+		isChineseSource := sourceLang == "zh"
+		isChineseTarget := strings.Contains(targetLang, "Chinese")
+		
+		isEnglishSource := sourceLang == "en"
+		isEnglishTarget := strings.Contains(targetLang, "English")
+
+		if (isChineseSource && isChineseTarget) || (isEnglishSource && isEnglishTarget) {
+			shouldTranslate = false
+			logFunc("Source language matches target. Skipping translation.")
+		}
+
+		if shouldTranslate {
+			// A. Translate
+			logFunc(fmt.Sprintf("Translating text to %s (structured)...", targetLang))
+			var err error
+			translationPairs, err = localAnalyzer.Translate(transcript, targetLang)
+			if err != nil {
+				runtime.LogErrorf(a.ctx, "Translation failed: %v", err)
+				logFunc("Translation failed.")
+			} else {
+				logFunc("Translation complete.")
+			}
 		}
 
 		// B. Analyze
@@ -233,18 +253,18 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	}
 
 	noteData := storage.NoteData{
-		Title:        safeTitle,
-		URL:          url,
-		Language:     targetLang, // Use target language for note context
-		Summary:      summary,
-		KeyPoints:    analysis.KeyPoints,
-		Tags:         analysis.Tags,
-		Assessment:   analysis.Assessment,
-		OriginalText: transcript,
-		Translated:   translatedText,
-		AudioFile:    finalMedia,
-		AssetsFolder: "assets",
-		CreatedTime:  time.Now().Format("2006-01-02 15:04"),
+		Title:            safeTitle,
+		URL:              url,
+		Language:         targetLang, // Use target language for note context
+		Summary:          summary,
+		KeyPoints:        analysis.KeyPoints,
+		Tags:             analysis.Tags,
+		Assessment:       analysis.Assessment,
+		OriginalText:     transcript,
+		TranslationPairs: translationPairs,
+		AudioFile:        finalMedia,
+		AssetsFolder:     "assets",
+		CreatedTime:      time.Now().Format("2006-01-02 15:04"),
 	}
 
 	notePath, err := localStorage.SaveNote(noteData)

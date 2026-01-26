@@ -42,6 +42,11 @@ type AnalysisResult struct {
 	Assessment map[string]string `json:"assessment"`
 }
 
+type TranslationPair struct {
+	Original   string `json:"original"`
+	Translated string `json:"translated"`
+}
+
 func (a *Analyzer) Analyze(text string, targetLang string, onToken func(string)) (*AnalysisResult, error) {
 	if targetLang == "" {
 		targetLang = "Simplified Chinese"
@@ -122,12 +127,18 @@ Text to analyze:
 	return &analysis, nil
 }
 
-func (a *Analyzer) Translate(text string, targetLang string) (string, error) {
+func (a *Analyzer) Translate(text string, targetLang string) ([]TranslationPair, error) {
 	if targetLang == "" {
 		targetLang = "Simplified Chinese"
 	}
 	
-	prompt := fmt.Sprintf("Translate the following text into %s. Maintain original formatting:\n\n%s", targetLang, text)
+	prompt := fmt.Sprintf(`You are a professional translator.
+Task: Translate the following text into %s.
+Format: Return ONLY a valid JSON array of objects. Each object represents a sentence or logical segment.
+Structure: [{"original": "source sentence", "translated": "translated sentence"}]
+
+Text to translate:
+%s`, targetLang, text)
 
 	reqBody := Request{
 		Model:  a.modelName,
@@ -137,24 +148,35 @@ func (a *Analyzer) Translate(text string, targetLang string) (string, error) {
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	resp, err := http.Post(a.apiURL, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	// Read full response for non-streaming
 	body, _ := io.ReadAll(resp.Body)
-	// We need to parse the NDJSON or single JSON response. 
-	// The /api/generate endpoint with stream:false returns a single JSON object.
 	
 	var result Response
 	if err := json.Unmarshal(body, &result); err != nil {
-		return "", fmt.Errorf("failed to decode translation: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal ollama response: %w", err)
 	}
 
-	return result.Response, nil
+	// Extract JSON array from LLM response
+	responseText := result.Response
+	if idx := strings.Index(responseText, "["); idx != -1 {
+		responseText = responseText[idx:]
+	}
+	if idx := strings.LastIndex(responseText, "]"); idx != -1 {
+		responseText = responseText[:idx+1]
+	}
+
+	var pairs []TranslationPair
+	if err := json.Unmarshal([]byte(responseText), &pairs); err != nil {
+		return nil, fmt.Errorf("failed to decode translation pairs: %w", err)
+	}
+
+	return pairs, nil
 }

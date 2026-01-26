@@ -17,7 +17,7 @@ func NewTranscriber(dep *dependency.Manager) *Transcriber {
 	return &Transcriber{dep: dep}
 }
 
-func (t *Transcriber) Transcribe(audioPath, modelPath string, onProgress func(string)) (string, error) {
+func (t *Transcriber) Transcribe(audioPath, modelPath string, onProgress func(string)) (string, string, error) {
 	// 1. Find binary
 	candidates := []string{"whisper-cli", "whisper-cpp", "whisper-main", "whisper", "main"}
 	var binPath string
@@ -29,62 +29,71 @@ func (t *Transcriber) Transcribe(audioPath, modelPath string, onProgress func(st
 	}
 
 	if binPath == "" {
-		return "", fmt.Errorf("whisper binary not found in PATH. Please install whisper.cpp")
+		return "", "", fmt.Errorf("whisper binary not found in PATH. Please install whisper.cpp")
 	}
 
 	// 2. Check model
 	if modelPath == "" {
-		return "", fmt.Errorf("whisper model path not configured")
+		return "", "", fmt.Errorf("whisper model path not configured")
 	}
 	if _, err := os.Stat(modelPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("model file not found at %s", modelPath)
+		return "", "", fmt.Errorf("model file not found at %s", modelPath)
 	}
 
 	// 3. Convert to WAV (16kHz, Mono)
 	wavPath := audioPath + ".wav"
 	if err := t.convertToWav(audioPath, wavPath); err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer os.Remove(wavPath)
 
 	// 4. Run Whisper
-	// Expects output: wavPath + ".txt"
-	// We removed --no-timestamps to allow progress logging in stdout.
-	// We will clean timestamps from the file later.
 	cmd := exec.Command(binPath, "-m", modelPath, "-f", wavPath, "--output-txt", "--language", "auto")
 	
-	// Stream output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	cmd.Stderr = cmd.Stdout // Capture stderr too (whisper prints progress there usually)
+	cmd.Stderr = cmd.Stdout
 
 	if err := cmd.Start(); err != nil {
-		return "", fmt.Errorf("failed to start whisper: %w", err)
+		return "", "", fmt.Errorf("failed to start whisper: %w", err)
 	}
+
+	var detectedLang string
+	// Regex to match "auto-detected language: zh"
+	langRegex := regexp.MustCompile(`auto-detected language:\s+(\w+)`)
 
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
 		line := scanner.Text()
+		
+		// Try to capture language
+		if detectedLang == "" {
+			matches := langRegex.FindStringSubmatch(line)
+			if len(matches) > 1 {
+				detectedLang = matches[1]
+			}
+		}
+
 		if onProgress != nil {
 			onProgress(line)
 		}
 	}
 
 	if err := cmd.Wait(); err != nil {
-		return "", fmt.Errorf("whisper execution failed: %w", err)
+		return "", "", fmt.Errorf("whisper execution failed: %w", err)
 	}
 
 	resultFile := wavPath + ".txt"
 	content, err := os.ReadFile(resultFile)
 	if err != nil {
-		return "", fmt.Errorf("failed to read transcript file %s: %w", resultFile, err)
+		return "", "", fmt.Errorf("failed to read transcript file %s: %w", resultFile, err)
 	}
 	defer os.Remove(resultFile)
 
 	cleanedContent := t.cleanTimestamps(string(content))
-	return cleanedContent, nil
+	return cleanedContent, detectedLang, nil
 }
 
 func (t *Transcriber) cleanTimestamps(text string) string {

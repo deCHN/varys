@@ -7,22 +7,23 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+	"Varys/backend/analyzer"
 )
 
 // NoteData holds the data for the markdown note
 type NoteData struct {
-	Title        string
-	URL          string
-	Language     string
-	Summary      string
-	KeyPoints    []string
-	Tags         []string
-	Assessment   map[string]string
-	OriginalText string
-	Translated   string
-	AudioFile    string
-	CreatedTime  string
-	AssetsFolder string
+	Title            string
+	URL              string
+	Language         string
+	Summary          string
+	KeyPoints        []string
+	Tags             []string
+	Assessment       map[string]string
+	OriginalText     string
+	TranslationPairs []analyzer.TranslationPair
+	AudioFile        string
+	CreatedTime      string
+	AssetsFolder     string
 }
 
 type Manager struct {
@@ -142,12 +143,14 @@ tags:
 ![[{{.AssetsFolder}}/{{.AudioFile}}]]
 
 ---
-{{if ne .Language "zh"}}
+{{if .TranslationPairs}}
 ## 对照翻译
 
 | 原文 | 译文 |
 | :--- | :--- |
-| {{tableSafe .OriginalText}} | {{tableSafe .Translated}} |
+{{- range .TranslationPairs}}
+| {{tableSafe .Original}} | {{tableSafe .Translated}} |
+{{- end}}
 
 ---
 {{else}}
