@@ -235,7 +235,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 
 // GetAppVersion returns the current application version
 func (a *App) GetAppVersion() string {
-	return "v0.3.0"
+	return "v0.3.1"
 }
 
 // GetConfig returns current config
