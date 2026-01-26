@@ -8,9 +8,10 @@ import (
 )
 
 type Config struct {
-	VaultPath string `json:"vault_path"`
-	ModelPath string `json:"model_path"` // Whisper Model Path
-	LLMModel  string `json:"llm_model"`  // Ollama Model Name
+	VaultPath      string `json:"vault_path"`
+	ModelPath      string `json:"model_path"` // Whisper Model Path
+	LLMModel       string `json:"llm_model"`  // Ollama Model Name
+	TargetLanguage string `json:"target_language"` // Output language for analysis and translation
 }
 
 type Manager struct {

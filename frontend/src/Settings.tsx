@@ -5,15 +5,28 @@ interface Config {
     vault_path: string;
     model_path: string;
     llm_model: string;
+    target_language: string;
 }
 
 export default function Settings() {
-    const [cfg, setCfg] = useState<Config>({ vault_path: '', model_path: '', llm_model: '' });
+    const [cfg, setCfg] = useState<Config>({ vault_path: '', model_path: '', llm_model: '', target_language: '' });
     const [deps, setDeps] = useState<any>({});
     const [ollamaModels, setOllamaModels] = useState<string[]>([]);
     const [configPath, setConfigPath] = useState<string>('');
     const [version, setVersion] = useState<string>('');
     const [status, setStatus] = useState<{msg: string, type: 'success' | 'error' | ''}>({msg: '', type: ''});
+
+    const languages = [
+        "Simplified Chinese",
+        "Traditional Chinese",
+        "English",
+        "Japanese",
+        "Spanish",
+        "French",
+        "German",
+        "Korean",
+        "Russian"
+    ];
 
     useEffect(() => {
         GetConfig().then((c: any) => setCfg(c));
@@ -111,6 +124,17 @@ export default function Settings() {
                                 placeholder="Type model name (e.g. qwen2.5:7b)"
                             />
                         )}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-2">Target Language</label>
+                        <select 
+                            className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none" 
+                            value={cfg.target_language || "Simplified Chinese"} 
+                            onChange={e => setCfg({...cfg, target_language: e.target.value})} 
+                        >
+                            {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
+                        </select>
                     </div>
                 </div>
             </div>

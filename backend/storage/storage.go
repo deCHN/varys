@@ -143,18 +143,28 @@ tags:
 
 ---
 {{if ne .Language "zh"}}
-## 全文翻译
+## 对照翻译
 
-{{.Translated}}
+| 原文 | 译文 |
+| :--- | :--- |
+| {{tableSafe .OriginalText}} | {{tableSafe .Translated}} |
 
 ---
-{{end}}
+{{else}}
 ## 原始内容
 
 {{.OriginalText}}
+{{end}}
 `
 
-	tt, err := template.New("note").Parse(tmplStr)
+	funcMap := template.FuncMap{
+		"tableSafe": func(s string) string {
+			// Replace newlines with <br> to keep table structure valid
+			return strings.ReplaceAll(s, "\n", "<br>")
+		},
+	}
+
+	tt, err := template.New("note").Funcs(funcMap).Parse(tmplStr)
 	if err != nil {
 		return "", err
 	}

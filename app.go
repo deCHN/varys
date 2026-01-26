@@ -179,12 +179,29 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	llmModel := cfg.LLMModel
 	if llmModel == "" { llmModel = "qwen2.5:7b" }
 	localAnalyzer := analyzer.NewAnalyzer(llmModel)
+	
+	targetLang := cfg.TargetLanguage
+	if targetLang == "" { targetLang = "Simplified Chinese" }
 
 	var summary string
+	var analysis *analyzer.AnalysisResult
+	var translatedText string
+
 	if transcript != "Transcription failed." {
-		logFunc("Analyzing text with AI...")
-		
-		analysis, err := localAnalyzer.Analyze(transcript, func(token string) {
+		// A. Translate
+		logFunc(fmt.Sprintf("Translating text to %s...", targetLang))
+		var err error
+		translatedText, err = localAnalyzer.Translate(transcript, targetLang)
+		if err != nil {
+			runtime.LogErrorf(a.ctx, "Translation failed: %v", err)
+			logFunc("Translation failed.")
+		} else {
+			logFunc("Translation complete.")
+		}
+
+		// B. Analyze
+		logFunc("Analyzing content...")
+		analysis, err = localAnalyzer.Analyze(transcript, targetLang, func(token string) {
 			runtime.EventsEmit(a.ctx, "task:analysis", token)
 		})
 		
@@ -192,8 +209,9 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 			runtime.LogErrorf(a.ctx, "Analysis failed: %v", err)
 			logFunc("Analysis failed (is Ollama running?).")
 			summary = "Analysis failed."
+			analysis = &analyzer.AnalysisResult{}
 		} else {
-			summary = analysis
+			summary = analysis.Summary
 			logFunc("Analysis complete.")
 		}
 	}
@@ -217,9 +235,13 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	noteData := storage.NoteData{
 		Title:        safeTitle,
 		URL:          url,
-		Language:     "en",
+		Language:     targetLang, // Use target language for note context
 		Summary:      summary,
+		KeyPoints:    analysis.KeyPoints,
+		Tags:         analysis.Tags,
+		Assessment:   analysis.Assessment,
 		OriginalText: transcript,
+		Translated:   translatedText,
 		AudioFile:    finalMedia,
 		AssetsFolder: "assets",
 		CreatedTime:  time.Now().Format("2006-01-02 15:04"),

@@ -4,6 +4,7 @@ export namespace config {
 	    vault_path: string;
 	    model_path: string;
 	    llm_model: string;
+	    target_language: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -14,6 +15,7 @@ export namespace config {
 	        this.vault_path = source["vault_path"];
 	        this.model_path = source["model_path"];
 	        this.llm_model = source["llm_model"];
+	        this.target_language = source["target_language"];
 	    }
 	}
 

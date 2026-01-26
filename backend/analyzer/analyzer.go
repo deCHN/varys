@@ -35,31 +35,52 @@ type Response struct {
 	Done     bool   `json:"done"`
 }
 
-func (a *Analyzer) Analyze(text string, onToken func(string)) (string, error) {
-	// Simple analysis prompt
-	prompt := fmt.Sprintf("Analyze the following text and provide a summary, key points, and tags in Simplified Chinese (zh-CN). Use Markdown format:\n\n%s", text)
+type AnalysisResult struct {
+	Summary    string            `json:"summary"`
+	KeyPoints  []string          `json:"key_points"`
+	Tags       []string          `json:"tags"`
+	Assessment map[string]string `json:"assessment"`
+}
+
+func (a *Analyzer) Analyze(text string, targetLang string, onToken func(string)) (*AnalysisResult, error) {
+	if targetLang == "" {
+		targetLang = "Simplified Chinese"
+	}
+
+	prompt := fmt.Sprintf(`You are an expert content analyst. 
+Task: Analyze the following text and provide a structured analysis in %s.
+Format: Return ONLY a valid JSON object with the following structure:
+{
+  "summary": "Concise summary of the content",
+  "key_points": ["Point 1", "Point 2", "Point 3"],
+  "tags": ["Tag1", "Tag2", "Tag3"],
+  "assessment": {
+    "authenticity": "Rating/Comment",
+    "effectiveness": "Rating/Comment",
+    "timeliness": "Rating/Comment",
+    "alternatives": "Rating/Comment"
+  }
+}
+
+Text to analyze:
+%s`, targetLang, text)
 
 	reqBody := Request{
 		Model:  a.modelName,
 		Prompt: prompt,
-		Stream: true, // Enable streaming
+		Stream: true,
 	}
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	resp, err := http.Post(a.apiURL, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return "", fmt.Errorf("ollama request failed: %w. Is Ollama running?", err)
+		return nil, fmt.Errorf("ollama request failed: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("ollama error %s: %s", resp.Status, string(body))
-	}
 
 	var fullResponse strings.Builder
 	decoder := json.NewDecoder(resp.Body)
@@ -70,7 +91,7 @@ func (a *Analyzer) Analyze(text string, onToken func(string)) (string, error) {
 			if err == io.EOF {
 				break
 			}
-			return "", fmt.Errorf("failed to decode stream: %w", err)
+			return nil, fmt.Errorf("failed to decode stream: %w", err)
 		}
 
 		fullResponse.WriteString(result.Response)
@@ -85,19 +106,55 @@ func (a *Analyzer) Analyze(text string, onToken func(string)) (string, error) {
 
 	// Clean up markdown code blocks if the LLM wrapped the output
 	responseText := fullResponse.String()
-	// Remove starting ```markdown or ```
-	if strings.HasPrefix(responseText, "```") {
-		// Remove first line
-		if idx := strings.Index(responseText, "\n"); idx != -1 {
-			responseText = responseText[idx+1:]
-		} else {
-            // Just remove the marker if no newline (unlikely for block)
-            responseText = strings.TrimPrefix(responseText, "```markdown")
-            responseText = strings.TrimPrefix(responseText, "```")
-        }
+	if idx := strings.Index(responseText, "{"); idx != -1 {
+		responseText = responseText[idx:]
 	}
-	// Remove ending ```
-	responseText = strings.TrimSuffix(strings.TrimSpace(responseText), "```")
+	if idx := strings.LastIndex(responseText, "}"); idx != -1 {
+		responseText = responseText[:idx+1]
+	}
 
-	return responseText, nil
+	var analysis AnalysisResult
+	if err := json.Unmarshal([]byte(responseText), &analysis); err != nil {
+		// Fallback: try to return just summary if JSON fails
+		return &AnalysisResult{Summary: responseText}, nil
+	}
+
+	return &analysis, nil
+}
+
+func (a *Analyzer) Translate(text string, targetLang string) (string, error) {
+	if targetLang == "" {
+		targetLang = "Simplified Chinese"
+	}
+	
+	prompt := fmt.Sprintf("Translate the following text into %s. Maintain original formatting:\n\n%s", targetLang, text)
+
+	reqBody := Request{
+		Model:  a.modelName,
+		Prompt: prompt,
+		Stream: false,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := http.Post(a.apiURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	// Read full response for non-streaming
+	body, _ := io.ReadAll(resp.Body)
+	// We need to parse the NDJSON or single JSON response. 
+	// The /api/generate endpoint with stream:false returns a single JSON object.
+	
+	var result Response
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("failed to decode translation: %w", err)
+	}
+
+	return result.Response, nil
 }
