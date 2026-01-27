@@ -71,7 +71,7 @@ fi
 	audioPath := filepath.Join(tempDir, "test_audio.m4a")
 	os.WriteFile(audioPath, []byte("audio"), 0644)
 
-	text, err := tr.Transcribe(audioPath, modelPath, nil)
+	text, _, err := tr.Transcribe(audioPath, modelPath, nil)
 	if err != nil {
 		t.Fatalf("Transcribe failed: %v", err)
 	}
