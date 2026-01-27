@@ -79,12 +79,26 @@ lint: ## Run linters (Go vet & NPM lint if configured)
 # ------------------------------------------------------------------------------
 
 .PHONY: test
-test: test-backend test-frontend ## Run all unit tests
+test: test-unit test-frontend ## Run fast unit tests (backend & frontend)
 
 .PHONY: test-backend
-test-backend: ## Run Go unit tests
-	@echo "Running Backend Tests..."
-	cd $(PROJECT_DIR) && $(GO) test -v ./...
+test-backend: test-unit ## Alias for test-unit
+
+.PHONY: test-unit
+test-unit: ## Run Go unit tests (excludes benchmarks)
+	@echo "Running Unit Tests..."
+	cd $(PROJECT_DIR) && $(GO) test -v $$(go list ./backend/... | grep -v benchmarks)
+
+.PHONY: test-benchmark
+test-benchmark: ## Run Go performance benchmarks
+	@echo "Running Performance Benchmarks (this may take time)..."
+	cd $(PROJECT_DIR) && $(GO) test -v ./backend/benchmarks/...
+
+.PHONY: test-coverage
+test-coverage: ## Run unit tests with coverage report
+	@echo "Running Test Coverage..."
+	cd $(PROJECT_DIR) && $(GO) test -coverprofile=coverage.out $$(go list ./backend/... | grep -v benchmarks)
+	@$(GO) tool cover -func=coverage.out
 
 .PHONY: test-frontend
 test-frontend: ## Run Frontend Unit Tests (Vitest)
