@@ -53,7 +53,7 @@ func (a *Analyzer) Analyze(text string, targetLang string, onToken func(string))
 		targetLang = "Simplified Chinese"
 	}
 
-	prompt := fmt.Sprintf(`You are an expert content analyst. 
+	prompt := fmt.Sprintf(`You are an expert content analyst.
 Task: Analyze the following text and provide a structured analysis in %s.
 Format: Return ONLY a valid JSON object with the following structure:
 {
@@ -144,7 +144,7 @@ func (a *Analyzer) Translate(text string, targetLang string) ([]TranslationPair,
 	// Chunking logic: Translate in blocks of ~2000 characters to ensure stability
 	const chunkSize = 2000
 	var allPairs []TranslationPair
-	
+
 	// Simple split by characters (could be improved to split by paragraph)
 	for i := 0; i < len(text); i += chunkSize {
 		end := i + chunkSize
@@ -180,7 +180,7 @@ Text to translate:
 		if err != nil {
 			return nil, err
 		}
-		
+
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
@@ -193,7 +193,7 @@ Text to translate:
 		var result Response
 		if err := json.Unmarshal(body, &result); err != nil {
 			// If a single chunk fails, we log and continue or return error
-			continue 
+			continue
 		}
 
 		responseText := result.Response

@@ -49,7 +49,7 @@ func (t *Transcriber) Transcribe(audioPath, modelPath string, onProgress func(st
 
 	// 4. Run Whisper
 	cmd := exec.Command(binPath, "-m", modelPath, "-f", wavPath, "--output-txt", "--language", "auto")
-	
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", "", err
@@ -67,7 +67,7 @@ func (t *Transcriber) Transcribe(audioPath, modelPath string, onProgress func(st
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		// Try to capture language
 		if detectedLang == "" {
 			matches := langRegex.FindStringSubmatch(line)

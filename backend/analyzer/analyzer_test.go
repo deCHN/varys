@@ -13,7 +13,7 @@ func TestAnalyze(t *testing.T) {
 		if r.Method != "POST" {
 			t.Errorf("Expected POST, got %s", r.Method)
 		}
-		
+
 		// Verify body
 		var req Request
 		json.NewDecoder(r.Body).Decode(&req)

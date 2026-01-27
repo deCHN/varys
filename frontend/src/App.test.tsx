@@ -24,7 +24,7 @@ vi.mock('../wailsjs/go/main/App', () => ({
 describe('App Component', () => {
     it('renders the correct title and removes logo', () => {
         render(<App />);
-        
+
         // Check Title (Now Tabs)
         const tabElement = screen.getByText('Task');
         expect(tabElement).toBeInTheDocument();

@@ -27,7 +27,7 @@ func TestIntegrationTranscribe(t *testing.T) {
 
 	resDir := filepath.Join(projectRoot, "res")
 	audioFile := filepath.Join(resDir, "test_audio.opus")
-	
+
 	// Prefer the large model if the user downloaded it
 	modelFile := filepath.Join(resDir, "ggml-large-v3-turbo.bin")
 	if _, err := os.Stat(modelFile); os.IsNotExist(err) {
@@ -67,12 +67,12 @@ func TestIntegrationTranscribe(t *testing.T) {
 		// Try 'main'
 		path, found = depMgr.CheckSystemDependency("main")
 	}
-	
+
 	if !found {
 		// Attempt to find it in previous download location?
 		// Varys/backend/dependency/bin/darwin_arm64/whisper-cli (if I downloaded it before and it persisted?)
 		// No, I deleted it.
-		
+
 		t.Skip("whisper binary (whisper-cli/whisper-cpp) not found in PATH. Please install it to run integration tests.")
 	} else {
 		t.Logf("Using whisper binary: %s", path)
@@ -86,7 +86,7 @@ func TestIntegrationTranscribe(t *testing.T) {
 	}
 
 	t.Logf("SUCCESS! Transcript:\n%s", text)
-	
+
 	// Save to res/transcript.txt
 	outFile := filepath.Join(resDir, "transcript.txt")
 	if err := os.WriteFile(outFile, []byte(text), 0644); err != nil {

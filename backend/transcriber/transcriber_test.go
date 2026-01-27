@@ -60,7 +60,7 @@ fi
 
 	// 3. Init
 	depMgr := &dependency.Manager{}
-	
+
 	// Create dummy model file
 	modelPath := filepath.Join(tempDir, "model.bin")
 	os.WriteFile(modelPath, []byte("data"), 0644)

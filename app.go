@@ -61,7 +61,7 @@ func (a *App) startup(ctx context.Context) {
 
 	// 3. Init Modules
 	cfg, _ := a.cfgManager.Load()
-	
+
 	// Storage
 	vaultPath := cfg.VaultPath
 	if vaultPath == "" {
@@ -72,10 +72,10 @@ func (a *App) startup(ctx context.Context) {
 
 	// Downloader
 	a.downloader = downloader.NewDownloader(a.depManager)
-	
+
 	// Transcriber (Model passed dynamically now)
 	a.transcriber = transcriber.NewTranscriber(a.depManager)
-	
+
 	// Analyzer
 	llmModel := cfg.LLMModel
 	if llmModel == "" { llmModel = "qwen2.5:7b" }
@@ -90,12 +90,12 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 
 	var logBuffer []string
 	hasErrorLog := false
-	
+
 	// logFunc captures logs and emits them
 	logFunc := func(msg string) {
 		logBuffer = append(logBuffer, fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), msg))
 		runtime.EventsEmit(a.ctx, "task:log", msg)
-		
+
 		msgLower := strings.ToLower(msg)
 		if strings.Contains(msgLower, "error") || strings.Contains(msgLower, "failed") {
 			hasErrorLog = true
@@ -110,20 +110,20 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 			if taskErr != nil {
 				logContent += fmt.Sprintf("\n\n[FATAL ERROR] %v", taskErr)
 			}
-			
-			// Save error_<date>.log
-			pwd, _ := os.Getwd()
-			debugDir := filepath.Join(pwd, ".debug")
+
+			// Save to ~/.varys/logs
+			home, _ := os.UserHomeDir()
+			debugDir := filepath.Join(home, ".varys", "logs")
 			os.MkdirAll(debugDir, 0755)
 
 			filename := fmt.Sprintf("error_%s.log", timestamp)
 			filePath := filepath.Join(debugDir, filename)
 			os.WriteFile(filePath, []byte(logContent), 0644)
-			
+
 			// Copy to error_latest.log
 			latestPath := filepath.Join(debugDir, "error_latest.log")
 			os.WriteFile(latestPath, []byte(logContent), 0644)
-			
+
 			logFunc(fmt.Sprintf("Logs dumped to %s", filePath))
 		}
 	}()
@@ -180,7 +180,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	llmModel := cfg.LLMModel
 	if llmModel == "" { llmModel = "qwen2.5:7b" }
 	localAnalyzer := analyzer.NewAnalyzer(llmModel)
-	
+
 	targetLang := cfg.TargetLanguage
 	if targetLang == "" { targetLang = "Simplified Chinese" }
 
@@ -191,13 +191,13 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	if transcript != "Transcription failed." {
 		// Smart Translation Logic
 		shouldTranslate := true
-		
+
 		// 1. Check if source matches target (Basic mapping)
 		// Whisper returns 2-letter codes: zh, en, ja, es...
 		// Target is full name: Simplified Chinese, English...
 		isChineseSource := sourceLang == "zh"
 		isChineseTarget := strings.Contains(targetLang, "Chinese")
-		
+
 		isEnglishSource := sourceLang == "en"
 		isEnglishTarget := strings.Contains(targetLang, "English")
 
@@ -213,7 +213,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 			translationPairs, err = localAnalyzer.Translate(transcript, targetLang)
 			if err != nil {
 				runtime.LogErrorf(a.ctx, "Translation failed: %v", err)
-				logFunc("Translation failed.")
+				logFunc(fmt.Sprintf("Translation failed: %v", err))
 			} else {
 				logFunc("Translation complete.")
 			}
@@ -224,7 +224,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 		analysis, err = localAnalyzer.Analyze(transcript, targetLang, func(token string) {
 			runtime.EventsEmit(a.ctx, "task:analysis", token)
 		})
-		
+
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "Analysis failed: %v", err)
 			logFunc("Analysis failed (is Ollama running?).")
@@ -246,7 +246,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	localStorage := storage.NewManager(vaultPath)
 
 	safeTitle := localStorage.SanitizeFilename(videoTitle)
-	
+
 	finalMedia, err := localStorage.MoveMedia(mediaPath, safeTitle)
 	if err != nil {
 		return "", fmt.Errorf("failed to move media: %w", err)
@@ -306,7 +306,7 @@ type DependencyStatus struct {
 // CheckDependencies checks availability of external tools
 func (a *App) CheckDependencies() DependencyStatus {
 	status := DependencyStatus{}
-	
+
 	if a.depManager == nil {
 		return status
 	}
@@ -316,7 +316,7 @@ func (a *App) CheckDependencies() DependencyStatus {
 	if _, err := os.Stat(ytPath); err == nil {
 		status.YtDlp = true
 	}
-	
+
 	ffmpegPath := a.depManager.GetBinaryPath("ffmpeg")
 	if _, err := os.Stat(ffmpegPath); err == nil {
 		status.Ffmpeg = true
@@ -383,12 +383,12 @@ func (a *App) GetOllamaModels() ([]string, error) {
 		return nil, fmt.Errorf("failed to connect to ollama: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	var data OllamaTagsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return nil, err
 	}
-	
+
 	var names []string
 	for _, m := range data.Models {
 		names = append(names, m.Name)

@@ -72,13 +72,13 @@ func (d *Downloader) DownloadMedia(url string, outputDir string, audioOnly bool,
 	}
 
 	cmd := exec.Command(ytPath, args...)
-	
+
 	// Capture stdout for progress
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", err
 	}
-	
+
 	// Merge stderr into stdout usually helps catch errors in stream, but for progress just stdout
 	cmd.Stderr = cmd.Stdout
 
@@ -110,7 +110,7 @@ func (d *Downloader) DownloadMedia(url string, outputDir string, audioOnly bool,
 	if err != nil || len(files) == 0 {
 		return "", fmt.Errorf("download success but output file not found")
 	}
-	
+
 	// Return the first match (likely the only one)
 	return files[0], nil
 }

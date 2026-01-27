@@ -1,15 +1,15 @@
 export namespace config {
-	
+
 	export class Config {
 	    vault_path: string;
 	    model_path: string;
 	    llm_model: string;
 	    target_language: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.vault_path = source["vault_path"];
@@ -22,17 +22,17 @@ export namespace config {
 }
 
 export namespace main {
-	
+
 	export class DependencyStatus {
 	    yt_dlp: boolean;
 	    ffmpeg: boolean;
 	    whisper: boolean;
 	    ollama: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DependencyStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.yt_dlp = source["yt_dlp"];

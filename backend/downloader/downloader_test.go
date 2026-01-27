@@ -20,14 +20,14 @@ func TestDownloadMedia(t *testing.T) {
 	// 2. Mock yt-dlp binary
 	binDir := filepath.Join(tempDir, "bin")
 	os.MkdirAll(binDir, 0755)
-	
+
 	mockYtPath := filepath.Join(binDir, "yt-dlp")
-	
+
 	// Create a script that acts as yt-dlp
 	// It needs to parse the -o argument or just create the file in the output dir (which is passed as part of -o)
 	// The Downloader passes: -o outputDir/temp_audio.%(ext)s
 	// We just need to create outputDir/temp_audio.m4a
-	
+
 	var scriptContent string
 	if runtime.GOOS == "windows" {
 		// Batch script for windows? (Not targeting windows yet)
@@ -39,7 +39,7 @@ func TestDownloadMedia(t *testing.T) {
 		// OR we rely on the test passing the outputDir which we know.
 		// Wait, the test calls DownloadAudio(url, outputDir).
 		// The script runs in... arbitrary pwd.
-		
+
 		// Let's make the script simple:
 		// It receives args. We can verify args if we want.
 		// Crucially, it must create the file.
@@ -48,7 +48,7 @@ func TestDownloadMedia(t *testing.T) {
 		// Arg structure: ... -o outputTemplate ...
 		// We can cheat: The test will use `tempDir` as outputDir too.
 		// So we create the file at `tempDir/temp_audio.m4a`.
-		
+
 		targetFile := filepath.Join(tempDir, "temp_audio.m4a")
 		scriptContent = fmt.Sprintf("#!/bin/sh\ntouch \"%s\"\necho 'Mock Download Finished'", targetFile)
 	}
@@ -79,7 +79,7 @@ func TestDownloadMedia(t *testing.T) {
 	if resultPath != expected {
 		t.Errorf("Expected path %s, got %s", expected, resultPath)
 	}
-	
+
 	if _, err := os.Stat(expected); os.IsNotExist(err) {
 		t.Error("Output file was not created")
 	}

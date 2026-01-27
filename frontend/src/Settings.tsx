@@ -66,21 +66,21 @@ export default function Settings() {
 
     return (
         <div className="max-w-2xl mx-auto p-8 w-full">
-            
+
             <div className="mb-10">
                 <h3 className="text-lg font-semibold text-slate-200 mb-6 border-b border-slate-800 pb-2">Configuration</h3>
-                
+
                 <div className="space-y-6">
                     <div>
                         <label className="block text-sm font-medium text-slate-400 mb-2">Obsidian Vault</label>
                         <div className="flex gap-2">
-                            <input 
-                                className="flex-1 bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500" 
-                                value={cfg.vault_path} 
-                                readOnly 
+                            <input
+                                className="flex-1 bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                value={cfg.vault_path}
+                                readOnly
                             />
-                            <button 
-                                className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-slate-600" 
+                            <button
+                                className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-slate-600"
                                 onClick={selectVault}
                             >
                                 Browse
@@ -91,36 +91,36 @@ export default function Settings() {
                     <div>
                         <label className="block text-sm font-medium text-slate-400 mb-2">Whisper Model (.bin)</label>
                         <div className="flex gap-2">
-                            <input 
-                                className="flex-1 bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500" 
-                                value={cfg.model_path} 
-                                readOnly 
+                            <input
+                                className="flex-1 bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                value={cfg.model_path}
+                                readOnly
                             />
-                            <button 
-                                className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-slate-600" 
+                            <button
+                                className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-slate-600"
                                 onClick={selectModel}
                             >
                                 Browse
                             </button>
                         </div>
                     </div>
-                    
+
                     <div>
                         <label className="block text-sm font-medium text-slate-400 mb-2">Ollama Model</label>
                         {ollamaModels.length > 0 ? (
-                            <select 
-                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none" 
-                                value={cfg.llm_model} 
-                                onChange={e => setCfg({...cfg, llm_model: e.target.value})} 
+                            <select
+                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none"
+                                value={cfg.llm_model}
+                                onChange={e => setCfg({...cfg, llm_model: e.target.value})}
                             >
                                 <option value="" disabled>Select a model...</option>
                                 {ollamaModels.map(m => <option key={m} value={m}>{m}</option>)}
                             </select>
                         ) : (
-                            <input 
-                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500" 
-                                value={cfg.llm_model} 
-                                onChange={e => setCfg({...cfg, llm_model: e.target.value})} 
+                            <input
+                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                value={cfg.llm_model}
+                                onChange={e => setCfg({...cfg, llm_model: e.target.value})}
                                 placeholder="Type model name (e.g. qwen2.5:7b)"
                             />
                         )}
@@ -128,10 +128,10 @@ export default function Settings() {
 
                     <div>
                         <label className="block text-sm font-medium text-slate-400 mb-2">Target Language</label>
-                        <select 
-                            className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none" 
-                            value={cfg.target_language || "Simplified Chinese"} 
-                            onChange={e => setCfg({...cfg, target_language: e.target.value})} 
+                        <select
+                            className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none"
+                            value={cfg.target_language || "Simplified Chinese"}
+                            onChange={e => setCfg({...cfg, target_language: e.target.value})}
                         >
                             {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
                         </select>
@@ -158,8 +158,8 @@ export default function Settings() {
             </div>
 
             <div className="flex flex-col items-end gap-3 pt-6 border-t border-slate-800">
-                <button 
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-900/20 active:scale-95" 
+                <button
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-900/20 active:scale-95"
                     onClick={save}
                 >
                     Save Changes
@@ -170,7 +170,7 @@ export default function Settings() {
                     </div>
                 )}
             </div>
-            
+
             <div className="mt-8 text-center text-xs text-slate-600">
                 Varys {version}
             </div>

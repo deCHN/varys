@@ -94,7 +94,7 @@ func TestMoveMedia(t *testing.T) {
 	os.WriteFile(sourceAudio, []byte("fake audio"), 0644)
 
 	mgr := NewManager(vaultDir)
-	
+
 	finalName, err := mgr.MoveMedia(sourceAudio, "Final_Name")
 	if err != nil {
 		t.Fatalf("MoveMedia failed: %v", err)
