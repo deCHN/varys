@@ -8,6 +8,7 @@ export default function Dashboard() {
     const [audioOnly, setAudioOnly] = useState(false);
     const [logs, setLogs] = useState<string[]>([]);
     const [analysisStream, setAnalysisStream] = useState("");
+    const [progress, setProgress] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
     const logEndRef = useRef<HTMLDivElement>(null);
     const streamEndRef = useRef<HTMLDivElement>(null);
@@ -35,9 +36,14 @@ export default function Dashboard() {
         const unsubAnalysis = EventsOn("task:analysis", (chunk: string) => {
             setAnalysisStream(prev => prev + chunk);
         });
+        const unsubProgress = EventsOn("task:progress", (p: number) => {
+            setProgress(p);
+        });
+
         return () => {
             unsubLog();
             unsubAnalysis();
+            unsubProgress();
         };
     }, []);
 
@@ -53,15 +59,18 @@ export default function Dashboard() {
         if (!url) return;
         setLogs([]);
         setAnalysisStream("");
+        setProgress(0);
         setResultText("Processing...");
         addLog(`Processing URL: ${url} (AudioOnly: ${audioOnly})`);
 
         SubmitTask(url, audioOnly).then((response: string) => {
              addLog(`Backend Response: ${response}`);
              setResultText("Task completed");
+             setProgress(0); // Reset after done
         }).catch((err: any) => {
              addLog(`Error: ${err}`);
              setResultText("Task failed");
+             setProgress(0);
         });
     }
 
@@ -114,6 +123,16 @@ export default function Dashboard() {
                 </button>
             </div>
 
+            {/* Progress Bar */}
+            {progress > 0 && (
+                <div className="w-full bg-slate-800 rounded-full h-1.5 mb-6 overflow-hidden">
+                    <div
+                        className="bg-emerald-500 h-full transition-all duration-500 ease-out"
+                        style={{ width: `${progress}%` }}
+                    ></div>
+                </div>
+            )}
+
             {/* Split View: Logs & Analysis */}
             <div className="flex gap-6 flex-1 min-h-0">
                 {/* System Logs */}
@@ -131,7 +150,7 @@ export default function Dashboard() {
                             </svg>
                         </button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-1 text-left">
+                    <div className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-1 text-left select-text">
                         {logs.length === 0 && <div className="text-slate-600 italic">Logs will appear here...</div>}
                         {logs.map((log, index) => (
                             <div key={index} className="text-slate-300 break-all border-l-2 border-transparent hover:border-slate-600 pl-2 -ml-2 py-0.5">

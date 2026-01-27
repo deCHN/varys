@@ -136,18 +136,45 @@ Text to analyze:
 	return &analysis, nil
 }
 
-func (a *Analyzer) Translate(text string, targetLang string) ([]TranslationPair, error) {
+func (a *Analyzer) Translate(text string, targetLang string, onProgress func(int, int)) ([]TranslationPair, error) {
+
 	if targetLang == "" {
+
 		targetLang = "Simplified Chinese"
+
 	}
 
+
+
 	// Chunking logic: Translate in blocks of ~2000 characters to ensure stability
+
 	const chunkSize = 2000
+
 	var allPairs []TranslationPair
 
+
+
+	chunks := (len(text) + chunkSize - 1) / chunkSize
+
+
+
 	// Simple split by characters (could be improved to split by paragraph)
+
 	for i := 0; i < len(text); i += chunkSize {
+
+		chunkIdx := i / chunkSize
+
+		if onProgress != nil {
+
+			onProgress(chunkIdx, chunks)
+
+		}
+
+
+
 		end := i + chunkSize
+
+
 		if end > len(text) {
 			end = len(text)
 		}

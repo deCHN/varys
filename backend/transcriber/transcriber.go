@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 	"Varys/backend/dependency"
 )
 
@@ -48,8 +49,11 @@ func (t *Transcriber) Transcribe(audioPath, modelPath string, onProgress func(st
 	defer os.Remove(wavPath)
 
 	// 4. Run Whisper
-	cmd := exec.Command(binPath, "-m", modelPath, "-f", wavPath, "--output-txt", "--language", "auto")
+	// Use --no-timestamps to reduce VRAM usage and prevent OOM on M-series chips for long files.
+	// Use --print-progress to maintain a heartbeat in the logs.
+	cmd := exec.Command(binPath, "-m", modelPath, "-f", wavPath, "--output-txt", "--no-timestamps", "--print-progress", "--language", "auto")
 
+	// Stream output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", "", err
@@ -93,7 +97,59 @@ func (t *Transcriber) Transcribe(audioPath, modelPath string, onProgress func(st
 	defer os.Remove(resultFile)
 
 	cleanedContent := t.cleanTimestamps(string(content))
+	cleanedContent = t.cleanHallucinations(cleanedContent)
 	return cleanedContent, detectedLang, nil
+}
+
+func (t *Transcriber) cleanHallucinations(text string) string {
+	// 1. Clean "Thank you." repetition (Specific Whisper hallucination)
+	// This one is simple and specific, so regex is fine/fast enough usually,
+	// but let's be safe and replace it first.
+	reThanks := regexp.MustCompile(`(?i)(Thank you\.?(\s*)){2,}`)
+	text = reThanks.ReplaceAllString(text, "Thank you.")
+
+	// 2. Clean general repeated phrases/sentences
+	// Complex regex on huge text causes hangs (ReDoS).
+	// Instead, we split by common delimiters and check for adjacent duplicates.
+
+	// Split by sentence-like boundaries (period, question mark, exclamation, newline)
+	// We preserve delimiters to reconstruct somewhat accurately
+	reSplit := regexp.MustCompile(`([.?!]|\n)+`)
+	segments := reSplit.Split(text, -1)
+
+	var cleanedSegments []string
+	if len(segments) == 0 {
+		return text
+	}
+
+	// Filter out adjacent duplicates
+	lastSeg := ""
+	dupCount := 0
+
+	for _, seg := range segments {
+		seg = strings.TrimSpace(seg)
+		if seg == "" {
+			continue
+		}
+
+		// Simple normalization for comparison (ignore case)
+		normalized := strings.ToLower(seg)
+
+		if normalized == lastSeg {
+			dupCount++
+			if dupCount < 2 { // Allow max 2 repetitions
+				cleanedSegments = append(cleanedSegments, seg)
+			}
+		} else {
+			cleanedSegments = append(cleanedSegments, seg)
+			lastSeg = normalized
+			dupCount = 0
+		}
+	}
+
+	// Reconstruct (this loses original delimiters, but it's better than a hang)
+	// We'll join with ". " as a best-effort approximation for readability
+	return strings.Join(cleanedSegments, ". ")
 }
 
 func (t *Transcriber) cleanTimestamps(text string) string {

@@ -146,11 +146,26 @@ tags:
 {{if .TranslationPairs}}
 ## 对照翻译
 
-| 原文 | 译文 |
-| :--- | :--- |
-{{- range .TranslationPairs}}
-| {{tableSafe .Original}} | {{tableSafe .Translated}} |
-{{- end}}
+<table width="100%">
+  <colgroup>
+    <col width="50%" />
+    <col width="50%" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>原文</th>
+      <th>译文</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{- range .TranslationPairs}}
+    <tr>
+      <td>{{tableSafe .Original}}</td>
+      <td>{{tableSafe .Translated}}</td>
+    </tr>
+    {{- end}}
+  </tbody>
+</table>
 
 ---
 {{else}}

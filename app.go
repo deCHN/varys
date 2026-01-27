@@ -210,11 +210,15 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 			// A. Translate
 			logFunc(fmt.Sprintf("Translating text to %s (structured)...", targetLang))
 			var err error
-			translationPairs, err = localAnalyzer.Translate(transcript, targetLang)
+			translationPairs, err = localAnalyzer.Translate(transcript, targetLang, func(current, total int) {
+				percent := float64(current+1) / float64(total) * 100
+				runtime.EventsEmit(a.ctx, "task:progress", percent)
+			})
 			if err != nil {
 				runtime.LogErrorf(a.ctx, "Translation failed: %v", err)
 				logFunc(fmt.Sprintf("Translation failed: %v", err))
 			} else {
+				runtime.EventsEmit(a.ctx, "task:progress", 100.0) // Ensure it finishes
 				logFunc("Translation complete.")
 			}
 		}
