@@ -29,6 +29,7 @@ Optimized for **Apple Silicon**, Varys leverages local AI models for privacy, sp
 *   **One-Click Capture:** Instantly download and process audio from YouTube, Bilibili, and other supported platforms using `yt-dlp`.
 *   **Local Transcription:** High-performance, offline speech-to-text powered by `whisper.cpp` (Metal accelerated). No cloud API keys required.
 *   **AI Intelligence:** Automatically summarizes content, extracts key points, and tags notes using local LLMs (via **Ollama**). Supports real-time streaming analysis.
+*   **Smart Translation:** Automatically translates content to your selected **Target Language** (configured in Settings). Smartly skips translation if source matches target, and uses chunking for reliable long-video support.
 *   **Obsidian Integration:** Direct export to your Obsidian Vault with properly formatted Markdown, frontmatter metadata, and embedded audio.
 *   **Modern UI:** A beautiful, dark-themed interface built with React and Tailwind CSS for a premium desktop experience.
 
@@ -76,6 +77,7 @@ Varys 专为 **Apple Silicon** 优化，利用本地 AI 模型，确保隐私安
 *   **一键捕获：** 使用 `yt-dlp` 瞬间下载并处理来自 YouTube、Bilibili 等平台的音频。
 *   **本地转录：** 基于 `whisper.cpp` (Metal 加速) 的高性能离线语音转文字。无需任何云端 API Key。
 *   **AI 智能分析：** 使用本地大模型 (通过 **Ollama**) 自动生成摘要、提取核心观点并打标签。支持实时流式输出分析结果。
+*   **智能翻译：** 自动将内容翻译为您选择的**目标语言**（在设置中配置）。智能跳过源语言匹配的翻译，并支持长视频分块翻译。
 *   **Obsidian 集成：** 直接导出到您的 Obsidian 仓库，包含格式完美的 Markdown、Frontmatter 元数据和内嵌音频文件。
 *   **现代界面：** 基于 React 和 Tailwind CSS 构建的精美暗色主题界面，提供顶级的桌面应用体验。
 
