@@ -25,9 +25,10 @@ func NewAnalyzer(model string) *Analyzer {
 }
 
 type Request struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
-	Stream bool   `json:"stream"`
+	Model   string                 `json:"model"`
+	Prompt  string                 `json:"prompt"`
+	Stream  bool                   `json:"stream"`
+	Options map[string]interface{} `json:"options,omitempty"`
 }
 
 type Response struct {
@@ -74,6 +75,9 @@ Text to analyze:
 		Model:  a.modelName,
 		Prompt: prompt,
 		Stream: true,
+		Options: map[string]interface{}{
+			"num_ctx": 32768, // Increase context window to 32k to handle long transcripts
+		},
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -86,6 +90,11 @@ Text to analyze:
 		return nil, fmt.Errorf("ollama request failed: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("ollama error %s: %s", resp.Status, string(body))
+	}
 
 	var fullResponse strings.Builder
 	decoder := json.NewDecoder(resp.Body)
@@ -131,52 +140,85 @@ func (a *Analyzer) Translate(text string, targetLang string) ([]TranslationPair,
 	if targetLang == "" {
 		targetLang = "Simplified Chinese"
 	}
+
+	// Chunking logic: Translate in blocks of ~2000 characters to ensure stability
+	const chunkSize = 2000
+	var allPairs []TranslationPair
 	
-	prompt := fmt.Sprintf(`You are a professional translator.
+	// Simple split by characters (could be improved to split by paragraph)
+	for i := 0; i < len(text); i += chunkSize {
+		end := i + chunkSize
+		if end > len(text) {
+			end = len(text)
+		}
+		chunk := text[i:end]
+
+		prompt := fmt.Sprintf(`You are a professional translator.
 Task: Translate the following text into %s.
 Format: Return ONLY a valid JSON array of objects. Each object represents a sentence or logical segment.
 Structure: [{"original": "source sentence", "translated": "translated sentence"}]
 
 Text to translate:
-%s`, targetLang, text)
+%s`, targetLang, chunk)
 
-	reqBody := Request{
-		Model:  a.modelName,
-		Prompt: prompt,
-		Stream: false,
+		reqBody := Request{
+			Model:  a.modelName,
+			Prompt: prompt,
+			Stream: false,
+			Options: map[string]interface{}{
+				"num_ctx":     8192, // 8k is enough for a 2k char chunk
+				"num_predict": 4096, // Allow enough output tokens
+			},
+		}
+
+		jsonData, err := json.Marshal(reqBody)
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := http.Post(a.apiURL, "application/json", bytes.NewBuffer(jsonData))
+		if err != nil {
+			return nil, err
+		}
+		
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			return nil, fmt.Errorf("ollama error %s: %s", resp.Status, string(body))
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		var result Response
+		if err := json.Unmarshal(body, &result); err != nil {
+			// If a single chunk fails, we log and continue or return error
+			continue 
+		}
+
+		responseText := result.Response
+		if idx := strings.Index(responseText, "["); idx != -1 {
+			responseText = responseText[idx:]
+		}
+		if idx := strings.LastIndex(responseText, "]"); idx != -1 {
+			responseText = responseText[:idx+1]
+		}
+
+		var pairs []TranslationPair
+		if err := json.Unmarshal([]byte(responseText), &pairs); err != nil {
+			// Fallback for this specific chunk
+			allPairs = append(allPairs, TranslationPair{
+				Original:   chunk,
+				Translated: responseText,
+			})
+		} else {
+			allPairs = append(allPairs, pairs...)
+		}
 	}
 
-	jsonData, err := json.Marshal(reqBody)
-	if err != nil {
-		return nil, err
+	if len(allPairs) == 0 && len(text) > 0 {
+		return nil, fmt.Errorf("translation failed for all chunks")
 	}
 
-	resp, err := http.Post(a.apiURL, "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-	
-	var result Response
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal ollama response: %w", err)
-	}
-
-	// Extract JSON array from LLM response
-	responseText := result.Response
-	if idx := strings.Index(responseText, "["); idx != -1 {
-		responseText = responseText[idx:]
-	}
-	if idx := strings.LastIndex(responseText, "]"); idx != -1 {
-		responseText = responseText[:idx+1]
-	}
-
-	var pairs []TranslationPair
-	if err := json.Unmarshal([]byte(responseText), &pairs); err != nil {
-		return nil, fmt.Errorf("failed to decode translation pairs: %w", err)
-	}
-
-	return pairs, nil
+	return allPairs, nil
 }
