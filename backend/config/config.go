@@ -12,6 +12,7 @@ type Config struct {
 	ModelPath      string `json:"model_path"` // Whisper Model Path
 	LLMModel       string `json:"llm_model"`  // Ollama Model Name
 	TargetLanguage string `json:"target_language"` // Output language for analysis and translation
+	ContextSize    int    `json:"context_size"`    // Context window size for Ollama (default: 8192)
 }
 
 type Manager struct {
@@ -37,7 +38,7 @@ func NewManager() (*Manager, error) {
 func (m *Manager) Load() (*Config, error) {
 	data, err := os.ReadFile(m.configPath)
 	if os.IsNotExist(err) {
-		return &Config{}, nil // Return empty default config
+		return &Config{ContextSize: 8192}, nil // Return empty default config with safe context size
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -46,6 +47,11 @@ func (m *Manager) Load() (*Config, error) {
 	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	// Set default if missing/zero
+	if cfg.ContextSize == 0 {
+		cfg.ContextSize = 8192
 	}
 
 	return &cfg, nil

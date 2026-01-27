@@ -181,55 +181,57 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	if llmModel == "" { llmModel = "qwen2.5:7b" }
 	localAnalyzer := analyzer.NewAnalyzer(llmModel)
 
-	targetLang := cfg.TargetLanguage
-	if targetLang == "" { targetLang = "Simplified Chinese" }
-
-	var summary string
-	var analysis *analyzer.AnalysisResult
-	var translationPairs []analyzer.TranslationPair
-
-	if transcript != "Transcription failed." {
-		// Smart Translation Logic
-		shouldTranslate := true
-
-		// 1. Check if source matches target (Basic mapping)
-		// Whisper returns 2-letter codes: zh, en, ja, es...
-		// Target is full name: Simplified Chinese, English...
-		isChineseSource := sourceLang == "zh"
-		isChineseTarget := strings.Contains(targetLang, "Chinese")
-
-		isEnglishSource := sourceLang == "en"
-		isEnglishTarget := strings.Contains(targetLang, "English")
-
-		if (isChineseSource && isChineseTarget) || (isEnglishSource && isEnglishTarget) {
-			shouldTranslate = false
-			logFunc("Source language matches target. Skipping translation.")
-		}
-
-		if shouldTranslate {
-			// A. Translate
-			logFunc(fmt.Sprintf("Translating text to %s (structured)...", targetLang))
-			var err error
-			translationPairs, err = localAnalyzer.Translate(transcript, targetLang, func(current, total int) {
-				percent := float64(current+1) / float64(total) * 100
-				runtime.EventsEmit(a.ctx, "task:progress", percent)
+		targetLang := cfg.TargetLanguage
+		if targetLang == "" { targetLang = "Simplified Chinese" }
+		
+		contextSize := cfg.ContextSize
+		if contextSize == 0 { contextSize = 8192 }
+	
+		var summary string
+		var analysis *analyzer.AnalysisResult
+		var translationPairs []analyzer.TranslationPair
+	
+		if transcript != "Transcription failed." {
+			// Smart Translation Logic
+			shouldTranslate := true
+			
+			// 1. Check if source matches target (Basic mapping)
+			// Whisper returns 2-letter codes: zh, en, ja, es...
+			// Target is full name: Simplified Chinese, English...
+			isChineseSource := sourceLang == "zh"
+			isChineseTarget := strings.Contains(targetLang, "Chinese")
+			
+			isEnglishSource := sourceLang == "en"
+			isEnglishTarget := strings.Contains(targetLang, "English")
+	
+			if (isChineseSource && isChineseTarget) || (isEnglishSource && isEnglishTarget) {
+				shouldTranslate = false
+				logFunc("Source language matches target. Skipping translation.")
+			}
+	
+			if shouldTranslate {
+				// A. Translate
+				logFunc(fmt.Sprintf("Translating text to %s (structured)...", targetLang))
+				var err error
+				translationPairs, err = localAnalyzer.Translate(transcript, targetLang, contextSize, func(current, total int) {
+					percent := float64(current+1) / float64(total) * 100
+					runtime.EventsEmit(a.ctx, "task:progress", percent)
+				})
+				if err != nil {
+					runtime.LogErrorf(a.ctx, "Translation failed: %v", err)
+					logFunc(fmt.Sprintf("Translation failed: %v", err))
+				} else {
+					runtime.EventsEmit(a.ctx, "task:progress", 100.0) // Ensure it finishes
+					logFunc("Translation complete.")
+				}
+			}
+	
+			// B. Analyze
+			logFunc("Analyzing content...")
+			analysis, err = localAnalyzer.Analyze(transcript, targetLang, contextSize, func(token string) {
+				runtime.EventsEmit(a.ctx, "task:analysis", token)
 			})
 			if err != nil {
-				runtime.LogErrorf(a.ctx, "Translation failed: %v", err)
-				logFunc(fmt.Sprintf("Translation failed: %v", err))
-			} else {
-				runtime.EventsEmit(a.ctx, "task:progress", 100.0) // Ensure it finishes
-				logFunc("Translation complete.")
-			}
-		}
-
-		// B. Analyze
-		logFunc("Analyzing content...")
-		analysis, err = localAnalyzer.Analyze(transcript, targetLang, func(token string) {
-			runtime.EventsEmit(a.ctx, "task:analysis", token)
-		})
-
-		if err != nil {
 			runtime.LogErrorf(a.ctx, "Analysis failed: %v", err)
 			logFunc("Analysis failed (is Ollama running?).")
 			summary = "Analysis failed."

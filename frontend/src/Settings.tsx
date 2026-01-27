@@ -6,10 +6,11 @@ interface Config {
     model_path: string;
     llm_model: string;
     target_language: string;
+    context_size: number;
 }
 
 export default function Settings() {
-    const [cfg, setCfg] = useState<Config>({ vault_path: '', model_path: '', llm_model: '', target_language: '' });
+    const [cfg, setCfg] = useState<Config>({ vault_path: '', model_path: '', llm_model: '', target_language: '', context_size: 8192 });
     const [deps, setDeps] = useState<any>({});
     const [ollamaModels, setOllamaModels] = useState<string[]>([]);
     const [configPath, setConfigPath] = useState<string>('');
@@ -135,6 +136,23 @@ export default function Settings() {
                         >
                             {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
                         </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-2">Context Size (Tokens)</label>
+                        <select 
+                            className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none" 
+                            value={cfg.context_size || 8192} 
+                            onChange={e => setCfg({...cfg, context_size: parseInt(e.target.value)})} 
+                        >
+                            <option value={4096}>4k (Low Memory)</option>
+                            <option value={8192}>8k (Default)</option>
+                            <option value={16384}>16k (High)</option>
+                            <option value={32768}>32k (Max)</option>
+                        </select>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Higher values allow longer videos but require more RAM. 8k is safe for 16GB RAM.
+                        </p>
                     </div>
                 </div>
             </div>

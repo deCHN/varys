@@ -48,9 +48,12 @@ type TranslationPair struct {
 	Translated string `json:"translated"`
 }
 
-func (a *Analyzer) Analyze(text string, targetLang string, onToken func(string)) (*AnalysisResult, error) {
+func (a *Analyzer) Analyze(text string, targetLang string, contextSize int, onToken func(string)) (*AnalysisResult, error) {
 	if targetLang == "" {
 		targetLang = "Simplified Chinese"
+	}
+	if contextSize == 0 {
+		contextSize = 8192 // Fallback default
 	}
 
 	prompt := fmt.Sprintf(`You are an expert content analyst.
@@ -76,7 +79,7 @@ Text to analyze:
 		Prompt: prompt,
 		Stream: true,
 		Options: map[string]interface{}{
-			"num_ctx": 32768, // Increase context window to 32k to handle long transcripts
+			"num_ctx": contextSize,
 		},
 	}
 
@@ -136,18 +139,15 @@ Text to analyze:
 	return &analysis, nil
 }
 
-func (a *Analyzer) Translate(text string, targetLang string, onProgress func(int, int)) ([]TranslationPair, error) {
-
+func (a *Analyzer) Translate(text string, targetLang string, contextSize int, onProgress func(int, int)) ([]TranslationPair, error) {
 	if targetLang == "" {
-
 		targetLang = "Simplified Chinese"
-
+	}
+	if contextSize == 0 {
+		contextSize = 8192 // Fallback default
 	}
 
-
-
 	// Chunking logic: Translate in blocks of ~2000 characters to ensure stability
-
 	const chunkSize = 2000
 
 	var allPairs []TranslationPair
@@ -193,7 +193,7 @@ Text to translate:
 			Prompt: prompt,
 			Stream: false,
 			Options: map[string]interface{}{
-				"num_ctx":     8192, // 8k is enough for a 2k char chunk
+				"num_ctx":     contextSize,
 				"num_predict": 4096, // Allow enough output tokens
 			},
 		}
