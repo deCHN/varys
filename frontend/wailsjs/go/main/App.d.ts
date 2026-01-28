@@ -3,6 +3,8 @@
 import {main} from '../models';
 import {config} from '../models';
 
+export function CancelTask():Promise<void>;
+
 export function CheckDependencies():Promise<main.DependencyStatus>;
 
 export function GetAppVersion():Promise<string>;
