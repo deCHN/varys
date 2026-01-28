@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 	"Varys/backend/analyzer"
 	"Varys/backend/config"
@@ -30,6 +31,10 @@ type App struct {
 	transcriber    *transcriber.Transcriber
 	analyzer       *analyzer.Analyzer
 	translator     *translation.Translator
+	
+	// Task Management
+	taskMutex  sync.Mutex
+	taskCancel context.CancelFunc
 }
 
 // NewApp creates a new App application struct
@@ -90,15 +95,49 @@ func (a *App) startup(ctx context.Context) {
 	runtime.LogInfo(a.ctx, "Backend initialized successfully.")
 }
 
+// CancelTask cancels the currently running task
+func (a *App) CancelTask() {
+	a.taskMutex.Lock()
+	defer a.taskMutex.Unlock()
+	if a.taskCancel != nil {
+		a.taskCancel()
+		a.taskCancel = nil
+		runtime.LogInfo(a.ctx, "Task cancellation requested.")
+	}
+}
+
 // SubmitTask starts the pipeline
 func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr error) {
 	runtime.LogInfo(a.ctx, fmt.Sprintf("Received task for URL: %s (AudioOnly: %v)", url, audioOnly))
+
+	// Setup Cancellation Context
+	a.taskMutex.Lock()
+	// Cancel previous if any
+	if a.taskCancel != nil {
+		a.taskCancel()
+	}
+	ctx, cancel := context.WithCancel(a.ctx)
+	a.taskCancel = cancel
+	a.taskMutex.Unlock()
+
+	// Ensure cleanup
+	defer func() {
+		a.taskMutex.Lock()
+		if a.taskCancel != nil {
+			a.taskCancel() // Ensure context is cancelled
+			a.taskCancel = nil
+		}
+		a.taskMutex.Unlock()
+	}()
 
 	var logBuffer []string
 	hasErrorLog := false
 
 	// logFunc captures logs and emits them
 	logFunc := func(msg string) {
+		// Check cancellation before logging
+		if ctx.Err() != nil { return }
+		
 		logBuffer = append(logBuffer, fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), msg))
 		runtime.EventsEmit(a.ctx, "task:log", msg)
 
@@ -108,8 +147,12 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 		}
 	}
 
-	// Dump logs on exit if error occurred
+	// Dump logs on exit if error occurred (and not cancelled)
 	defer func() {
+		if ctx.Err() == context.Canceled {
+			logFunc("Task cancelled by user.")
+			return
+		}
 		if taskErr != nil || hasErrorLog {
 			timestamp := time.Now().Format("2006-01-02_15-04-05")
 			logContent := strings.Join(logBuffer, "\n")
@@ -138,7 +181,10 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp dir: %w", err)
 	}
-	// defer os.RemoveAll(tempDir) // Keep for debug
+	defer os.RemoveAll(tempDir) // Clean up temp files
+
+	// Check Cancel
+	if ctx.Err() != nil { return "", ctx.Err() }
 
 	// Load latest config
 	cfg, _ := a.cfgManager.Load()
@@ -153,23 +199,36 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 		logFunc(fmt.Sprintf("Title found: %s", videoTitle))
 	}
 
+	// Check Cancel
+	if ctx.Err() != nil { return "", ctx.Err() }
+
 	// 1. Download
 	logFunc(fmt.Sprintf("Downloading media from %s...", url))
 	mediaPath, err := a.downloader.DownloadMedia(url, tempDir, audioOnly, func(msg string) {
-		logFunc("[DL] "+msg)
+		if ctx.Err() == nil {
+			logFunc("[DL] "+msg)
+		}
 	})
 	if err != nil {
+		// If context cancelled, err might be from downloader or our check
+		if ctx.Err() != nil { return "", ctx.Err() }
 		return "", fmt.Errorf("download failed: %w", err)
 	}
 	logFunc(fmt.Sprintf("Download complete: %s", mediaPath))
+
+	// Check Cancel
+	if ctx.Err() != nil { return "", ctx.Err() }
 
 	// 2. Transcribe
 	logFunc("Transcribing audio (this may take a while)...")
 	var sourceLang string
 	// Pass model from config dynamically
 	transcript, sourceLang, err := a.transcriber.Transcribe(mediaPath, cfg.ModelPath, func(msg string) {
-		logFunc("[Whisper] "+msg)
+		if ctx.Err() == nil {
+			logFunc("[Whisper] "+msg)
+		}
 	})
+	if ctx.Err() != nil { return "", ctx.Err() }
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Transcription failed: %v", err)
 		logFunc("Transcription failed (check config/deps). Skipping analysis.")
@@ -177,6 +236,9 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	} else {
 		logFunc(fmt.Sprintf("Transcription complete (Detected Language: %s).", sourceLang))
 	}
+
+	// Check Cancel
+	if ctx.Err() != nil { return "", ctx.Err() }
 
 	// 3. Analyze & Translate
 	llmModel := cfg.LLMModel
@@ -214,13 +276,19 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 		}
 
 		if shouldTranslate {
+			// Check Cancel
+			if ctx.Err() != nil { return "", ctx.Err() }
+
 			// A. Translate
 			logFunc(fmt.Sprintf("Translating text to %s (structured)...", targetLang))
 			var err error
 			translationPairs, err = localTranslator.Translate(transcript, targetLang, contextSize, func(current, total int) {
-				percent := float64(current+1) / float64(total) * 100
-				runtime.EventsEmit(a.ctx, "task:progress", percent)
+				if ctx.Err() == nil {
+					percent := float64(current+1) / float64(total) * 100
+					runtime.EventsEmit(a.ctx, "task:progress", percent)
+				}
 			})
+			if ctx.Err() != nil { return "", ctx.Err() }
 			if err != nil {
 				runtime.LogErrorf(a.ctx, "Translation failed: %v", err)
 				logFunc(fmt.Sprintf("Translation failed: %v", err))
@@ -230,11 +298,17 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 			}
 		}
 
+		// Check Cancel
+		if ctx.Err() != nil { return "", ctx.Err() }
+
 		// B. Analyze
 		logFunc("Analyzing content...")
 		analysis, err = localAnalyzer.Analyze(transcript, targetLang, contextSize, func(token string) {
-			runtime.EventsEmit(a.ctx, "task:analysis", token)
+			if ctx.Err() == nil {
+				runtime.EventsEmit(a.ctx, "task:analysis", token)
+			}
 		})
+		if ctx.Err() != nil { return "", ctx.Err() }
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "Analysis failed: %v", err)
 			logFunc("Analysis failed (is Ollama running?).")
@@ -245,6 +319,9 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 			logFunc("Analysis complete.")
 		}
 	}
+
+	// Check Cancel
+	if ctx.Err() != nil { return "", ctx.Err() }
 
 	// 4. Save
 	// Reload storage manager too? VaultPath might have changed.

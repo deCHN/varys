@@ -1,11 +1,12 @@
 import {useState, useEffect, useRef} from 'react';
-import {SubmitTask} from "../wailsjs/go/main/App";
+import {SubmitTask, CancelTask} from "../wailsjs/go/main/App";
 import {EventsOn} from "../wailsjs/runtime";
 
 export default function Dashboard() {
     const [resultText, setResultText] = useState("");
     const [url, setUrl] = useState('');
     const [audioOnly, setAudioOnly] = useState(true);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [logs, setLogs] = useState<string[]>([]);
     const [analysisStream, setAnalysisStream] = useState("");
     const [progress, setProgress] = useState(0);
@@ -17,7 +18,7 @@ export default function Dashboard() {
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
-            processUrl();
+            handleProcessToggle();
         }
     };
 
@@ -55,11 +56,27 @@ export default function Dashboard() {
         streamEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [analysisStream]);
 
+    function handleProcessToggle() {
+        if (isProcessing) {
+            // Stop/Cancel
+            CancelTask().then(() => {
+                addLog("User requested cancellation...");
+                setIsProcessing(false);
+                setResultText("Cancelled");
+                setProgress(0);
+            });
+        } else {
+            // Start
+            processUrl();
+        }
+    }
+
     function processUrl() {
         if (!url) return;
         setLogs([]);
         setAnalysisStream("");
         setProgress(0);
+        setIsProcessing(true);
         setResultText("Processing...");
         addLog(`Processing URL: ${url} (AudioOnly: ${audioOnly})`);
 
@@ -67,10 +84,12 @@ export default function Dashboard() {
              addLog(`Backend Response: ${response}`);
              setResultText("Task completed");
              setProgress(0); // Reset after done
+             setIsProcessing(false);
         }).catch((err: any) => {
              addLog(`Error: ${err}`);
              setResultText("Task failed");
              setProgress(0);
+             setIsProcessing(false);
         });
     }
 
@@ -95,11 +114,12 @@ export default function Dashboard() {
                         onChange={updateUrl}
                         onKeyDown={handleKeyDown}
                         placeholder="Enter YouTube/Bilibili URL"
+                        disabled={isProcessing}
                     />
 
                     {/* Integrated Toggle Switch */}
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center bg-slate-700/50 rounded-full px-2 py-1">
-                        <label className="flex items-center cursor-pointer gap-2 select-none">
+                        <label className={`flex items-center cursor-pointer gap-2 select-none ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}>
                             <span className={`text-xs font-medium transition-colors ${audioOnly ? 'text-emerald-400' : 'text-slate-400'}`}>Audio Only</span>
                             <div className="relative">
                                 <input
@@ -107,6 +127,7 @@ export default function Dashboard() {
                                     className="sr-only peer"
                                     checked={audioOnly}
                                     onChange={(e) => setAudioOnly(e.target.checked)}
+                                    disabled={isProcessing}
                                 />
                                 <div className="w-7 h-4 bg-slate-600 rounded-full peer peer-checked:bg-emerald-500/80 peer-focus:ring-2 peer-focus:ring-emerald-800 transition-colors"></div>
                                 <div className="absolute left-[2px] top-[2px] bg-white w-3 h-3 rounded-full transition-transform peer-checked:translate-x-3"></div>
@@ -116,10 +137,23 @@ export default function Dashboard() {
                 </div>
 
                 <button
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-lg shadow-blue-900/20 active:scale-95 whitespace-nowrap"
-                    onClick={processUrl}
+                    className={`px-6 py-3 rounded-lg font-medium transition-all shadow-lg active:scale-95 flex items-center justify-center w-16 ${
+                        isProcessing 
+                        ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/20' 
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'
+                    }`}
+                    onClick={handleProcessToggle}
+                    title={isProcessing ? "Stop & Clear" : "Start Processing"}
                 >
-                    Process
+                    {isProcessing ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="6" y="6" width="12" height="12" rx="1" />
+                        </svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="5 3 19 12 5 21 5 3" />
+                        </svg>
+                    )}
                 </button>
             </div>
 

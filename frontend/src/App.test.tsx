@@ -14,6 +14,7 @@ vi.mock('../wailsjs/go/main/App', () => ({
     GetOllamaModels: vi.fn(() => Promise.resolve(["qwen3:8b"])),
     GetConfigPath: vi.fn(() => Promise.resolve("/tmp/config.json")),
     GetAppVersion: vi.fn(() => Promise.resolve("v0.3.4")),
+    CancelTask: vi.fn(() => Promise.resolve()),
 }));
 
 // Mock Wails Runtime (for EventsOn)
@@ -42,9 +43,12 @@ describe('App Component', () => {
         const inputElement = screen.getByPlaceholderText('Enter YouTube/Bilibili URL');
         expect(inputElement).toBeInTheDocument();
 
-        // Check Button
-        const buttonElement = screen.getByRole('button', { name: /process/i });
+        // Check Button exists (by title or role)
+        const buttonElement = screen.getByTitle(/Start Processing/i);
         expect(buttonElement).toBeInTheDocument();
-        expect(buttonElement).toHaveTextContent('Process');
+        
+        // Ensure it contains an SVG icon
+        const svg = buttonElement.querySelector('svg');
+        expect(svg).toBeInTheDocument();
     });
 });
