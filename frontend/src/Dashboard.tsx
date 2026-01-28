@@ -5,7 +5,7 @@ import {EventsOn} from "../wailsjs/runtime";
 export default function Dashboard() {
     const [resultText, setResultText] = useState("");
     const [url, setUrl] = useState('');
-    const [audioOnly, setAudioOnly] = useState(false);
+    const [audioOnly, setAudioOnly] = useState(true);
     const [logs, setLogs] = useState<string[]>([]);
     const [analysisStream, setAnalysisStream] = useState("");
     const [progress, setProgress] = useState(0);
