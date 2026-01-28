@@ -15,6 +15,7 @@ import (
 	"Varys/backend/downloader"
 	"Varys/backend/storage"
 	"Varys/backend/transcriber"
+	"Varys/backend/translation"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -28,6 +29,7 @@ type App struct {
 	storageManager *storage.Manager
 	transcriber    *transcriber.Transcriber
 	analyzer       *analyzer.Analyzer
+	translator     *translation.Translator
 }
 
 // NewApp creates a new App application struct
@@ -76,10 +78,14 @@ func (a *App) startup(ctx context.Context) {
 	// Transcriber (Model passed dynamically now)
 	a.transcriber = transcriber.NewTranscriber(a.depManager)
 
-	// Analyzer
+	// Analyzer & Translator
 	llmModel := cfg.LLMModel
-	if llmModel == "" { llmModel = "qwen2.5:7b" }
+	translationModel := cfg.TranslationModel
+	if llmModel == "" { llmModel = "qwen3:8b" }
+	if translationModel == "" { translationModel = "qwen3:0.6b" }
+	
 	a.analyzer = analyzer.NewAnalyzer(llmModel)
+	a.translator = translation.NewTranslator(translationModel)
 
 	runtime.LogInfo(a.ctx, "Backend initialized successfully.")
 }
@@ -172,68 +178,64 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 		logFunc(fmt.Sprintf("Transcription complete (Detected Language: %s).", sourceLang))
 	}
 
-	// 3. Analyze
-	// Reload analyzer with latest model if needed?
-	// For simplicity, we create a new analyzer or update it.
-	// Since Analyzer struct holds modelName, let's just make a new one or update it.
-	// Analyzer is lightweight.
+	// 3. Analyze & Translate
 	llmModel := cfg.LLMModel
 	translationModel := cfg.TranslationModel
-	if llmModel == "" { llmModel = "qwen2.5:7b" }
-	// NewAnalyzer handles default translationModel if empty
-	localAnalyzer := analyzer.NewAnalyzer(llmModel, translationModel)
+	if llmModel == "" { llmModel = "qwen3:8b" }
+	if translationModel == "" { translationModel = "qwen3:0.6b" }
+	
+	localAnalyzer := analyzer.NewAnalyzer(llmModel)
+	localTranslator := translation.NewTranslator(translationModel)
 
-		targetLang := cfg.TargetLanguage
-		if targetLang == "" { targetLang = "Simplified Chinese" }
+	targetLang := cfg.TargetLanguage
+	if targetLang == "" { targetLang = "Simplified Chinese" }
+	
+	contextSize := cfg.ContextSize
+	if contextSize == 0 { contextSize = 8192 }
+
+	var summary string
+	var analysis *analyzer.AnalysisResult
+	var translationPairs []translation.TranslationPair
+
+	if transcript != "Transcription failed." {
+		// Smart Translation Logic
+		shouldTranslate := true
 		
-		contextSize := cfg.ContextSize
-		if contextSize == 0 { contextSize = 8192 }
-	
-		var summary string
-		var analysis *analyzer.AnalysisResult
-		var translationPairs []analyzer.TranslationPair
-	
-		if transcript != "Transcription failed." {
-			// Smart Translation Logic
-			shouldTranslate := true
-			
-			// 1. Check if source matches target (Basic mapping)
-			// Whisper returns 2-letter codes: zh, en, ja, es...
-			// Target is full name: Simplified Chinese, English...
-			isChineseSource := sourceLang == "zh"
-			isChineseTarget := strings.Contains(targetLang, "Chinese")
-			
-			isEnglishSource := sourceLang == "en"
-			isEnglishTarget := strings.Contains(targetLang, "English")
-	
-			if (isChineseSource && isChineseTarget) || (isEnglishSource && isEnglishTarget) {
-				shouldTranslate = false
-				logFunc("Source language matches target. Skipping translation.")
-			}
-	
-			if shouldTranslate {
-				// A. Translate
-				logFunc(fmt.Sprintf("Translating text to %s (structured)...", targetLang))
-				var err error
-				translationPairs, err = localAnalyzer.Translate(transcript, targetLang, contextSize, func(current, total int) {
-					percent := float64(current+1) / float64(total) * 100
-					runtime.EventsEmit(a.ctx, "task:progress", percent)
-				})
-				if err != nil {
-					runtime.LogErrorf(a.ctx, "Translation failed: %v", err)
-					logFunc(fmt.Sprintf("Translation failed: %v", err))
-				} else {
-					runtime.EventsEmit(a.ctx, "task:progress", 100.0) // Ensure it finishes
-					logFunc("Translation complete.")
-				}
-			}
-	
-			// B. Analyze
-			logFunc("Analyzing content...")
-			analysis, err = localAnalyzer.Analyze(transcript, targetLang, contextSize, func(token string) {
-				runtime.EventsEmit(a.ctx, "task:analysis", token)
+		// 1. Check if source matches target (Basic mapping)
+		isChineseSource := sourceLang == "zh"
+		isChineseTarget := strings.Contains(targetLang, "Chinese")
+		
+		isEnglishSource := sourceLang == "en"
+		isEnglishTarget := strings.Contains(targetLang, "English")
+
+		if (isChineseSource && isChineseTarget) || (isEnglishSource && isEnglishTarget) {
+			shouldTranslate = false
+			logFunc("Source language matches target. Skipping translation.")
+		}
+
+		if shouldTranslate {
+			// A. Translate
+			logFunc(fmt.Sprintf("Translating text to %s (structured)...", targetLang))
+			var err error
+			translationPairs, err = localTranslator.Translate(transcript, targetLang, contextSize, func(current, total int) {
+				percent := float64(current+1) / float64(total) * 100
+				runtime.EventsEmit(a.ctx, "task:progress", percent)
 			})
 			if err != nil {
+				runtime.LogErrorf(a.ctx, "Translation failed: %v", err)
+				logFunc(fmt.Sprintf("Translation failed: %v", err))
+			} else {
+				runtime.EventsEmit(a.ctx, "task:progress", 100.0) // Ensure it finishes
+				logFunc("Translation complete.")
+			}
+		}
+
+		// B. Analyze
+		logFunc("Analyzing content...")
+		analysis, err = localAnalyzer.Analyze(transcript, targetLang, contextSize, func(token string) {
+			runtime.EventsEmit(a.ctx, "task:analysis", token)
+		})
+		if err != nil {
 			runtime.LogErrorf(a.ctx, "Analysis failed: %v", err)
 			logFunc("Analysis failed (is Ollama running?).")
 			summary = "Analysis failed."

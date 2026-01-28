@@ -5,12 +5,20 @@ interface Config {
     vault_path: string;
     model_path: string;
     llm_model: string;
+    translation_model: string;
     target_language: string;
     context_size: number;
 }
 
 export default function Settings() {
-    const [cfg, setCfg] = useState<Config>({ vault_path: '', model_path: '', llm_model: '', target_language: '', context_size: 8192 });
+    const [cfg, setCfg] = useState<Config>({ 
+        vault_path: '', 
+        model_path: '', 
+        llm_model: '', 
+        translation_model: 'qwen3:0.6b',
+        target_language: '', 
+        context_size: 8192 
+    });
     const [deps, setDeps] = useState<any>({});
     const [ollamaModels, setOllamaModels] = useState<string[]>([]);
     const [configPath, setConfigPath] = useState<string>('');

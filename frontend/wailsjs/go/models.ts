@@ -4,6 +4,7 @@ export namespace config {
 	    vault_path: string;
 	    model_path: string;
 	    llm_model: string;
+	    translation_model: string;
 	    target_language: string;
 	    context_size: number;
 	
@@ -16,6 +17,7 @@ export namespace config {
 	        this.vault_path = source["vault_path"];
 	        this.model_path = source["model_path"];
 	        this.llm_model = source["llm_model"];
+	        this.translation_model = source["translation_model"];
 	        this.target_language = source["target_language"];
 	        this.context_size = source["context_size"];
 	    }

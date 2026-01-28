@@ -1,30 +1,58 @@
 package storage
 
 import (
+
 	"io"
+
 	"os"
+
 	"path/filepath"
+
 	"regexp"
+
 	"strings"
+
 	"text/template"
-	"Varys/backend/analyzer"
+
+	"Varys/backend/translation"
+
 )
 
+
+
+
+
 // NoteData holds the data for the markdown note
+
 type NoteData struct {
+
 	Title            string
+
 	URL              string
+
 	Language         string
+
 	Summary          string
+
 	KeyPoints        []string
+
 	Tags             []string
+
 	Assessment       map[string]string
+
 	OriginalText     string
-	TranslationPairs []analyzer.TranslationPair
+
+	TranslationPairs []translation.TranslationPair
+
 	AudioFile        string
+
 	CreatedTime      string
+
 	AssetsFolder     string
+
 }
+
+
 
 type Manager struct {
 	VaultPath string

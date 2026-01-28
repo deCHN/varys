@@ -8,11 +8,12 @@ import (
 )
 
 type Config struct {
-	VaultPath      string `json:"vault_path"`
-	ModelPath      string `json:"model_path"` // Whisper Model Path
-	LLMModel       string `json:"llm_model"`  // Ollama Model Name
-	TargetLanguage string `json:"target_language"` // Output language for analysis and translation
-	ContextSize    int    `json:"context_size"`    // Context window size for Ollama (default: 8192)
+	VaultPath        string `json:"vault_path"`
+	ModelPath        string `json:"model_path"` // Whisper Model Path
+	LLMModel         string `json:"llm_model"`  // Ollama Model Name
+	TranslationModel string `json:"translation_model"` // Ollama Model for Translation (Default: qwen3:0.6b)
+	TargetLanguage   string `json:"target_language"` // Output language for analysis and translation
+	ContextSize      int    `json:"context_size"`    // Context window size for Ollama (default: 8192)
 }
 
 type Manager struct {
@@ -38,7 +39,7 @@ func NewManager() (*Manager, error) {
 func (m *Manager) Load() (*Config, error) {
 	data, err := os.ReadFile(m.configPath)
 	if os.IsNotExist(err) {
-		return &Config{ContextSize: 8192}, nil // Return empty default config with safe context size
+		return &Config{ContextSize: 8192, TranslationModel: "qwen3:0.6b"}, nil // Return empty default config
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -49,9 +50,12 @@ func (m *Manager) Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	// Set default if missing/zero
+	// Set defaults if missing
 	if cfg.ContextSize == 0 {
 		cfg.ContextSize = 8192
+	}
+	if cfg.TranslationModel == "" {
+		cfg.TranslationModel = "qwen3:0.6b"
 	}
 
 	return &cfg, nil
