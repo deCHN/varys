@@ -33,6 +33,10 @@ Optimized for **Apple Silicon**, Varys leverages local AI models for privacy, sp
 *   **Obsidian Integration:** Direct export to your Obsidian Vault with properly formatted Markdown, frontmatter metadata, and embedded audio.
 *   **Modern UI:** A beautiful, dark-themed interface built with React and Tailwind CSS for a premium desktop experience.
 
+### ⚡️ Performance
+Varys is optimized for speed on Apple Silicon.
+[View Performance Benchmarks & History](docs/PERFORMANCE.md)
+
 ### Getting Started
 
 #### Prerequisites
