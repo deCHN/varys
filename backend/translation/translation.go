@@ -49,32 +49,50 @@ func (t *Translator) Translate(text string, targetLang string, contextSize int, 
 		contextSize = 8192 // Fallback default
 	}
 
-	// Chunking logic: Translate in blocks of ~2000 characters to ensure stability
-	const chunkSize = 2000
+	// 1. Split text into logical chunks (paragraphs/sentences) to avoid context limits
+	// We aim for chunks of ~1500 chars to be safe.
+	const maxChunkSize = 1500
+	sentences := t.splitSentences(text)
+	
+	var chunks [][]string
+	var currentChunk []string
+	currentLen := 0
+
+	for _, s := range sentences {
+		if currentLen+len(s) > maxChunkSize && len(currentChunk) > 0 {
+			chunks = append(chunks, currentChunk)
+			currentChunk = []string{}
+			currentLen = 0
+		}
+		currentChunk = append(currentChunk, s)
+		currentLen += len(s)
+	}
+	if len(currentChunk) > 0 {
+		chunks = append(chunks, currentChunk)
+	}
+
 	var allPairs []TranslationPair
+	totalChunks := len(chunks)
 
-	chunks := (len(text) + chunkSize - 1) / chunkSize
-
-	// Simple split by characters (could be improved to split by paragraph)
-	for i := 0; i < len(text); i += chunkSize {
-		chunkIdx := i / chunkSize
+	// 2. Process each chunk
+	for i, sentenceGroup := range chunks {
 		if onProgress != nil {
-			onProgress(chunkIdx, chunks)
+			onProgress(i, totalChunks)
 		}
 
-		end := i + chunkSize
-		if end > len(text) {
-			end = len(text)
-		}
-		chunk := text[i:end]
+		// Prepare input block
+		inputBlock := strings.Join(sentenceGroup, "\n")
 
 		prompt := fmt.Sprintf(`You are a professional translator.
 Task: Translate the following text into %s.
-Format: Return ONLY a valid JSON array of objects. Each object represents a sentence or logical segment.
-Structure: [{"original": "source sentence", "translated": "translated sentence"}]
+Rules:
+1. Translate line-by-line.
+2. Maintain the same number of lines as the input.
+3. Do not output any notes, explanations, or extra text.
+4. Output ONLY the translation.
 
-Text to translate:
-%s`, targetLang, chunk)
+Input Text:
+%s`, targetLang, inputBlock)
 
 		reqBody := Request{
 			Model:  t.modelName,
@@ -82,7 +100,7 @@ Text to translate:
 			Stream: false,
 			Options: map[string]interface{}{
 				"num_ctx":     contextSize,
-				"num_predict": 4096, // Allow enough output tokens
+				"num_predict": 4096,
 			},
 		}
 
@@ -107,27 +125,43 @@ Text to translate:
 
 		var result Response
 		if err := json.Unmarshal(body, &result); err != nil {
-			// If a single chunk fails, we log and continue or return error
+			// Fail specific chunk
 			continue
 		}
 
-		responseText := result.Response
-		if idx := strings.Index(responseText, "["); idx != -1 {
-			responseText = responseText[idx:]
-		}
-		if idx := strings.LastIndex(responseText, "]"); idx != -1 {
-			responseText = responseText[:idx+1]
+		// 3. Parse Output (Line matching)
+		translatedLines := strings.Split(strings.TrimSpace(result.Response), "\n")
+		
+		// Clean empty lines from split if any
+		var cleanTranslated []string
+		for _, line := range translatedLines {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				cleanTranslated = append(cleanTranslated, line)
+			}
 		}
 
-		var pairs []TranslationPair
-		if err := json.Unmarshal([]byte(responseText), &pairs); err != nil {
-			// Fallback for this specific chunk
+		// Zip logic
+		// If counts match, perfect.
+		// If mismatch, we try to align or just dump the rest.
+		count := len(sentenceGroup)
+		if len(cleanTranslated) < count {
+			count = len(cleanTranslated)
+		}
+
+		for j := 0; j < count; j++ {
 			allPairs = append(allPairs, TranslationPair{
-				Original:   chunk,
-				Translated: responseText,
+				Original:   sentenceGroup[j],
+				Translated: cleanTranslated[j],
 			})
-		} else {
-			allPairs = append(allPairs, pairs...)
+		}
+		
+		// Handle unmatched lines (if source > translation)
+		for j := count; j < len(sentenceGroup); j++ {
+			allPairs = append(allPairs, TranslationPair{
+				Original:   sentenceGroup[j],
+				Translated: "(Translation missing)",
+			})
 		}
 	}
 
@@ -136,4 +170,52 @@ Text to translate:
 	}
 
 	return allPairs, nil
+}
+
+// splitSentences splits text into sentences or logical segments using regex.
+func (t *Translator) splitSentences(text string) []string {
+	// Split by common sentence terminators (. ? ! \n) followed by space or end of string
+	// We want to keep the delimiter attached to the previous sentence if possible, 
+	// but Go's regex split is simple.
+	// Alternative: Walk through and split.
+	
+	// Simple approach: Use regex to find sentences.
+	// This regex matches non-empty sequences ending in punctuation or newline.
+	// re := regexp.MustCompile(`[^.!?\n]+[.!?\n]+`)
+	// matches := re.FindAllString(text, -1)
+	
+	// If text has no punctuation, it might be one huge block.
+	// Let's use a simpler split for robustness: split by newlines first (whisper segments),
+	// then maybe split long lines.
+	
+	// Whisper output is already segmented by logic, often separated by ". "
+	
+	var segments []string
+	
+	// 1. Split by hard newlines first
+	lines := strings.Split(text, "\n")
+	
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		
+		// 2. Further split by ". " "? " "! " if the line is very long (>200 chars)
+		// Otherwise keep it as one unit for context.
+		if len(line) > 200 {
+			// Simple split by ". "
+			subParts := strings.Split(line, ". ")
+			for i, part := range subParts {
+				if i < len(subParts)-1 {
+					part += "."
+				}
+				segments = append(segments, part)
+			}
+		} else {
+			segments = append(segments, line)
+		}
+	}
+	
+	return segments
 }

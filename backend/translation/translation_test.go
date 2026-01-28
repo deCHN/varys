@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -14,9 +15,12 @@ func TestTranslate(t *testing.T) {
 			t.Errorf("Expected POST, got %s", r.Method)
 		}
 
-		// Return mock response (JSON array of pairs)
+		// Verify request body contains text prompt, not JSON format instruction
+		// (Optional deep check)
+
+		// Return mock response (Plain text lines)
 		resp := Response{
-			Response: `[{"original": "Hello", "translated": "你好"}]`,
+			Response: "你好.\n世界。",
 			Done:     true,
 		}
 		json.NewEncoder(w).Encode(resp)
@@ -29,16 +33,28 @@ func TestTranslate(t *testing.T) {
 
 	// 3. Run
 	// text, targetLang, contextSize, callback
-	results, err := tr.Translate("Hello", "Simplified Chinese", 4096, nil)
+	input := "Hello.\nWorld."
+	results, err := tr.Translate(input, "Simplified Chinese", 4096, nil)
 	if err != nil {
 		t.Fatalf("Translate failed: %v", err)
 	}
 
-	if len(results) != 1 {
-		t.Errorf("Expected 1 result, got %d", len(results))
+	if len(results) != 2 {
+		t.Errorf("Expected 2 results, got %d", len(results))
 	}
 
-	if results[0].Translated != "你好" {
-		t.Errorf("Unexpected result: %s", results[0].Translated)
+		if strings.TrimRight(results[0].Translated, "。.") != "你好" {
+
+			t.Errorf("Expected '你好', got: %s", results[0].Translated)
+
+		}
+
+		if strings.TrimRight(results[1].Translated, "。.") != "世界" {
+
+			t.Errorf("Expected '世界', got: %s", results[1].Translated)
+
+		}
+
 	}
-}
+
+	
