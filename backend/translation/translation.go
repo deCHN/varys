@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -49,50 +50,47 @@ func (t *Translator) Translate(text string, targetLang string, contextSize int, 
 		contextSize = 8192 // Fallback default
 	}
 
-	// 1. Split text into logical chunks (paragraphs/sentences) to avoid context limits
-	// We aim for chunks of ~1500 chars to be safe.
-	const maxChunkSize = 1500
+	// 1. Split text into individual sentences
 	sentences := t.splitSentences(text)
-	
-	var chunks [][]string
-	var currentChunk []string
-	currentLen := 0
-
-	for _, s := range sentences {
-		if currentLen+len(s) > maxChunkSize && len(currentChunk) > 0 {
-			chunks = append(chunks, currentChunk)
-			currentChunk = []string{}
-			currentLen = 0
-		}
-		currentChunk = append(currentChunk, s)
-		currentLen += len(s)
-	}
-	if len(currentChunk) > 0 {
-		chunks = append(chunks, currentChunk)
+	if len(sentences) == 0 {
+		return nil, nil
 	}
 
+	// 2. Process in small numbered batches (5-8 sentences)
+	// Small models (0.6b) are much more accurate with numbering and small batches.
+	const batchSize = 7
 	var allPairs []TranslationPair
-	totalChunks := len(chunks)
+	
+	totalBatches := (len(sentences) + batchSize - 1) / batchSize
 
-	// 2. Process each chunk
-	for i, sentenceGroup := range chunks {
+	for i := 0; i < len(sentences); i += batchSize {
+		batchIdx := i / batchSize
 		if onProgress != nil {
-			onProgress(i, totalChunks)
+			onProgress(batchIdx, totalBatches)
 		}
 
-		// Prepare input block
-		inputBlock := strings.Join(sentenceGroup, "\n")
+		end := i + batchSize
+		if end > len(sentences) {
+			end = len(sentences)
+		}
+		currentBatch := sentences[i:end]
+
+		// Prepare numbered input
+		var inputBuilder strings.Builder
+		for j, s := range currentBatch {
+			inputBuilder.WriteString(fmt.Sprintf("%d. %s\n", j+1, s))
+		}
 
 		prompt := fmt.Sprintf(`You are a professional translator.
-Task: Translate the following text into %s.
+Task: Translate the following numbered sentences into %s.
 Rules:
-1. Translate line-by-line.
-2. Maintain the same number of lines as the input.
-3. Do not output any notes, explanations, or extra text.
-4. Output ONLY the translation.
+1. Output exactly %d translated sentences.
+2. Use the same numbering format: "1. [translation]\n2. [translation]..."
+3. Do not include any introductory text, notes, or explanations.
+4. If a line is just punctuation, keep it as is.
 
-Input Text:
-%s`, targetLang, inputBlock)
+Input:
+%s`, targetLang, len(currentBatch), inputBuilder.String())
 
 		reqBody := Request{
 			Model:  t.modelName,
@@ -100,7 +98,8 @@ Input Text:
 			Stream: false,
 			Options: map[string]interface{}{
 				"num_ctx":     contextSize,
-				"num_predict": 4096,
+				"num_predict": 2048, // Smaller output expected per batch
+				"temperature": 0.1,    // Lower temperature for stricter adherence
 			},
 		}
 
@@ -125,42 +124,20 @@ Input Text:
 
 		var result Response
 		if err := json.Unmarshal(body, &result); err != nil {
-			// Fail specific chunk
 			continue
 		}
 
-		// 3. Parse Output (Line matching)
-		translatedLines := strings.Split(strings.TrimSpace(result.Response), "\n")
-		
-		// Clean empty lines from split if any
-		var cleanTranslated []string
-		for _, line := range translatedLines {
-			line = strings.TrimSpace(line)
-			if line != "" {
-				cleanTranslated = append(cleanTranslated, line)
+		// 3. Parse Numbered Output
+		translatedLines := t.parseNumberedOutput(result.Response, len(currentBatch))
+
+		for j := 0; j < len(currentBatch); j++ {
+			trans := "(Translation missing)"
+			if j < len(translatedLines) {
+				trans = translatedLines[j]
 			}
-		}
-
-		// Zip logic
-		// If counts match, perfect.
-		// If mismatch, we try to align or just dump the rest.
-		count := len(sentenceGroup)
-		if len(cleanTranslated) < count {
-			count = len(cleanTranslated)
-		}
-
-		for j := 0; j < count; j++ {
 			allPairs = append(allPairs, TranslationPair{
-				Original:   sentenceGroup[j],
-				Translated: cleanTranslated[j],
-			})
-		}
-		
-		// Handle unmatched lines (if source > translation)
-		for j := count; j < len(sentenceGroup); j++ {
-			allPairs = append(allPairs, TranslationPair{
-				Original:   sentenceGroup[j],
-				Translated: "(Translation missing)",
+				Original:   currentBatch[j],
+				Translated: trans,
 			})
 		}
 	}
@@ -170,6 +147,35 @@ Input Text:
 	}
 
 	return allPairs, nil
+}
+
+// parseNumberedOutput extracts text from lines starting with "1. ", "2. ", etc.
+func (t *Translator) parseNumberedOutput(output string, expectedCount int) []string {
+	lines := strings.Split(output, "\n")
+	results := make([]string, 0, expectedCount)
+	
+	// Regex to match "1. Text" or "1: Text" or just the text if model forgot numbering
+	reNumber := regexp.MustCompile(`^\d+[\.\:\s]+(.*)$`)
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		
+		matches := reNumber.FindStringSubmatch(line)
+		if len(matches) > 1 {
+			results = append(results, strings.TrimSpace(matches[1]))
+		} else {
+			// If model didn't use numbering but gave a line of text, take it
+			results = append(results, line)
+		}
+	}
+	
+	// If the model produced a single block instead of lines, 
+	// this parser might return too few items. 
+	// The caller handles padding with "missing".
+	return results
 }
 
 // splitSentences splits text into sentences or logical segments using regex.

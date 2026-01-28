@@ -18,9 +18,9 @@ func TestTranslate(t *testing.T) {
 		// Verify request body contains text prompt, not JSON format instruction
 		// (Optional deep check)
 
-		// Return mock response (Plain text lines)
+		// Return mock response (Numbered text lines)
 		resp := Response{
-			Response: "你好.\n世界。",
+			Response: "1. 你好.\n2. 世界。",
 			Done:     true,
 		}
 		json.NewEncoder(w).Encode(resp)
