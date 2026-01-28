@@ -178,8 +178,10 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	// Since Analyzer struct holds modelName, let's just make a new one or update it.
 	// Analyzer is lightweight.
 	llmModel := cfg.LLMModel
+	translationModel := cfg.TranslationModel
 	if llmModel == "" { llmModel = "qwen2.5:7b" }
-	localAnalyzer := analyzer.NewAnalyzer(llmModel)
+	// NewAnalyzer handles default translationModel if empty
+	localAnalyzer := analyzer.NewAnalyzer(llmModel, translationModel)
 
 		targetLang := cfg.TargetLanguage
 		if targetLang == "" { targetLang = "Simplified Chinese" }
@@ -283,7 +285,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 
 // GetAppVersion returns the current application version
 func (a *App) GetAppVersion() string {
-	return "v0.3.4"
+	return "v0.3.5"
 }
 
 // GetConfig returns current config
