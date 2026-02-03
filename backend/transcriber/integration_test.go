@@ -3,6 +3,8 @@
 package transcriber_test
 
 import (
+	"Varys/backend/dependency"
+	"Varys/backend/transcriber"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,8 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"Varys/backend/dependency"
-	"Varys/backend/transcriber"
 )
 
 func TestIntegrationTranscribe(t *testing.T) {
@@ -108,12 +108,18 @@ func TestIntegrationTranscribe(t *testing.T) {
 
 func downloadFile(url, dest string) error {
 	out, err := os.Create(dest)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer out.Close()
 	resp, err := http.Get(url)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 { return fmt.Errorf("status %s", resp.Status) }
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("status %s", resp.Status)
+	}
 	_, err = io.Copy(out, resp.Body)
 	return err
 }

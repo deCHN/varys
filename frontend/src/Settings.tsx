@@ -8,6 +8,7 @@ interface Config {
     translation_model: string;
     target_language: string;
     context_size: number;
+    custom_prompt: string;
 }
 
 export default function Settings() {
@@ -17,13 +18,35 @@ export default function Settings() {
         llm_model: '', 
         translation_model: 'qwen3:0.6b',
         target_language: '', 
-        context_size: 8192 
+        context_size: 8192,
+        custom_prompt: ''
     });
     const [deps, setDeps] = useState<any>({});
     const [ollamaModels, setOllamaModels] = useState<string[]>([]);
     const [configPath, setConfigPath] = useState<string>('');
     const [version, setVersion] = useState<string>('');
     const [status, setStatus] = useState<{msg: string, type: 'success' | 'error' | ''}>({msg: '', type: ''});
+
+    const defaultPrompt = `You are an expert content analyst.
+Task: Analyze the following text and provide a structured analysis in [Target Language].
+
+Rules:
+1. OUTPUT MUST BE IN [Target Language].
+2. If the input text is in English, TRANSLATE your analysis to [Target Language].
+3. Tags must be single words or hyphenated (no spaces).
+
+Format: Return ONLY a valid JSON object with the following structure:
+{
+  "summary": "Concise summary of the content",
+  "key_points": ["Point 1", "Point 2", "Point 3"],
+  "tags": ["Tag1", "Tag2", "Tag3"],
+  "assessment": {
+    "authenticity": "Rating/Comment",
+    "effectiveness": "Rating/Comment",
+    "timeliness": "Rating/Comment",
+    "alternatives": "Rating/Comment"
+  }
+}`;
 
     const languages = [
         "Simplified Chinese",
@@ -65,6 +88,10 @@ export default function Settings() {
         SelectModelPath().then(path => {
             if(path) setCfg({...cfg, model_path: path});
         });
+    };
+
+    const resetPrompt = () => {
+        setCfg({...cfg, custom_prompt: ''});
     };
 
     const StatusIcon = ({ ok }: { ok: boolean }) => (
@@ -160,6 +187,24 @@ export default function Settings() {
                         </select>
                         <p className="mt-1 text-xs text-slate-500">
                             Higher values allow longer videos but require more RAM. 8k is safe for 16GB RAM.
+                        </p>
+                    </div>
+
+                    <div>
+                        <div className="flex justify-between items-center mb-2">
+                             <label className="block text-sm font-medium text-slate-400">Custom Analysis Prompt</label>
+                             <button onClick={resetPrompt} className="text-xs text-blue-400 hover:text-blue-300 hover:underline">Reset to Default</button>
+                        </div>
+                        <textarea 
+                            className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono"
+                            rows={8}
+                            placeholder={defaultPrompt}
+                            value={cfg.custom_prompt || ""}
+                            onChange={e => setCfg({...cfg, custom_prompt: e.target.value})}
+                        />
+                        <p className="mt-1 text-xs text-slate-500">
+                            Leave empty to use the default smart prompt. If set, this will replace the system instruction. 
+                            Ensure you request JSON format compatible with the app.
                         </p>
                     </div>
                 </div>

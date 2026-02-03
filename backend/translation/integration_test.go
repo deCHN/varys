@@ -1,10 +1,10 @@
 package translation
 
 import (
+	"net/http"
 	"strings"
 	"testing"
 	"time"
-	"net/http"
 )
 
 // TestIntegrationTranslate performs a real call to Ollama.
@@ -18,7 +18,7 @@ func TestIntegrationTranslate(t *testing.T) {
 	defer resp.Body.Close()
 
 	// 2. Init with default small model
-	tr := NewTranslator("qwen3:0.6b") 
+	tr := NewTranslator("qwen3:0.6b")
 
 	// 3. Run Real Translation
 	// "Hello" -> Simplified Chinese

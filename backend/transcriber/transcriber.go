@@ -1,17 +1,17 @@
 package transcriber
 
 import (
+	"Varys/backend/dependency"
 	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
-	"Varys/backend/dependency"
 )
 
 type Transcriber struct {
-	dep       *dependency.Manager
+	dep *dependency.Manager
 }
 
 func NewTranscriber(dep *dependency.Manager) *Transcriber {

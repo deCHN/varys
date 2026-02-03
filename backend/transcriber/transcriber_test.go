@@ -1,11 +1,11 @@
 package transcriber
 
 import (
+	"Varys/backend/dependency"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"Varys/backend/dependency"
 )
 
 func TestTranscribe(t *testing.T) {

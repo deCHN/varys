@@ -29,14 +29,14 @@ func TestTagSanitization(t *testing.T) {
 	an.apiURL = ts.URL
 
 	// 3. Run
-	result, err := an.Analyze("content", "English", 4096, nil)
+	result, err := an.Analyze("content", "", "English", 4096, nil)
 	if err != nil {
 		t.Fatalf("Analyze failed: %v", err)
 	}
 
 	// 4. Verify Tags
 	expectedTags := []string{"note-taking", "product-review", "software-dev"}
-	
+
 	if len(result.Tags) != len(expectedTags) {
 		t.Fatalf("Expected %d tags, got %d", len(expectedTags), len(result.Tags))
 	}

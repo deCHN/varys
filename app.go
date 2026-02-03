@@ -1,6 +1,13 @@
 package main
 
 import (
+	"Varys/backend/analyzer"
+	"Varys/backend/config"
+	"Varys/backend/dependency"
+	"Varys/backend/downloader"
+	"Varys/backend/storage"
+	"Varys/backend/transcriber"
+	"Varys/backend/translation"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,13 +17,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"Varys/backend/analyzer"
-	"Varys/backend/config"
-	"Varys/backend/dependency"
-	"Varys/backend/downloader"
-	"Varys/backend/storage"
-	"Varys/backend/transcriber"
-	"Varys/backend/translation"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -31,7 +31,7 @@ type App struct {
 	transcriber    *transcriber.Transcriber
 	analyzer       *analyzer.Analyzer
 	translator     *translation.Translator
-	
+
 	// Task Management
 	taskMutex  sync.Mutex
 	taskCancel context.CancelFunc
@@ -86,9 +86,13 @@ func (a *App) startup(ctx context.Context) {
 	// Analyzer & Translator
 	llmModel := cfg.LLMModel
 	translationModel := cfg.TranslationModel
-	if llmModel == "" { llmModel = "qwen3:8b" }
-	if translationModel == "" { translationModel = "qwen3:0.6b" }
-	
+	if llmModel == "" {
+		llmModel = "qwen3:8b"
+	}
+	if translationModel == "" {
+		translationModel = "qwen3:0.6b"
+	}
+
 	a.analyzer = analyzer.NewAnalyzer(llmModel)
 	a.translator = translation.NewTranslator(translationModel)
 
@@ -136,8 +140,10 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	// logFunc captures logs and emits them
 	logFunc := func(msg string) {
 		// Check cancellation before logging
-		if ctx.Err() != nil { return }
-		
+		if ctx.Err() != nil {
+			return
+		}
+
 		logBuffer = append(logBuffer, fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), msg))
 		runtime.EventsEmit(a.ctx, "task:log", msg)
 
@@ -184,7 +190,9 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	defer os.RemoveAll(tempDir) // Clean up temp files
 
 	// Check Cancel
-	if ctx.Err() != nil { return "", ctx.Err() }
+	if ctx.Err() != nil {
+		return "", ctx.Err()
+	}
 
 	// Load latest config
 	cfg, _ := a.cfgManager.Load()
@@ -200,24 +208,30 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	}
 
 	// Check Cancel
-	if ctx.Err() != nil { return "", ctx.Err() }
+	if ctx.Err() != nil {
+		return "", ctx.Err()
+	}
 
 	// 1. Download
 	logFunc(fmt.Sprintf("Downloading media from %s...", url))
 	mediaPath, err := a.downloader.DownloadMedia(url, tempDir, audioOnly, func(msg string) {
 		if ctx.Err() == nil {
-			logFunc("[DL] "+msg)
+			logFunc("[DL] " + msg)
 		}
 	})
 	if err != nil {
 		// If context cancelled, err might be from downloader or our check
-		if ctx.Err() != nil { return "", ctx.Err() }
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
 		return "", fmt.Errorf("download failed: %w", err)
 	}
 	logFunc(fmt.Sprintf("Download complete: %s", mediaPath))
 
 	// Check Cancel
-	if ctx.Err() != nil { return "", ctx.Err() }
+	if ctx.Err() != nil {
+		return "", ctx.Err()
+	}
 
 	// 2. Transcribe
 	logFunc("Transcribing audio (this may take a while)...")
@@ -225,10 +239,12 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	// Pass model from config dynamically
 	transcript, sourceLang, err := a.transcriber.Transcribe(mediaPath, cfg.ModelPath, func(msg string) {
 		if ctx.Err() == nil {
-			logFunc("[Whisper] "+msg)
+			logFunc("[Whisper] " + msg)
 		}
 	})
-	if ctx.Err() != nil { return "", ctx.Err() }
+	if ctx.Err() != nil {
+		return "", ctx.Err()
+	}
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Transcription failed: %v", err)
 		logFunc("Transcription failed (check config/deps). Skipping analysis.")
@@ -238,22 +254,32 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	}
 
 	// Check Cancel
-	if ctx.Err() != nil { return "", ctx.Err() }
+	if ctx.Err() != nil {
+		return "", ctx.Err()
+	}
 
 	// 3. Analyze & Translate
 	llmModel := cfg.LLMModel
 	translationModel := cfg.TranslationModel
-	if llmModel == "" { llmModel = "qwen3:8b" }
-	if translationModel == "" { translationModel = "qwen3:0.6b" }
-	
+	if llmModel == "" {
+		llmModel = "qwen3:8b"
+	}
+	if translationModel == "" {
+		translationModel = "qwen3:0.6b"
+	}
+
 	localAnalyzer := analyzer.NewAnalyzer(llmModel)
 	localTranslator := translation.NewTranslator(translationModel)
 
 	targetLang := cfg.TargetLanguage
-	if targetLang == "" { targetLang = "Simplified Chinese" }
-	
+	if targetLang == "" {
+		targetLang = "Simplified Chinese"
+	}
+
 	contextSize := cfg.ContextSize
-	if contextSize == 0 { contextSize = 8192 }
+	if contextSize == 0 {
+		contextSize = 8192
+	}
 
 	var summary string
 	var analysis *analyzer.AnalysisResult
@@ -262,11 +288,11 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	if transcript != "Transcription failed." {
 		// Smart Translation Logic
 		shouldTranslate := true
-		
+
 		// 1. Check if source matches target (Basic mapping)
 		isChineseSource := sourceLang == "zh"
 		isChineseTarget := strings.Contains(targetLang, "Chinese")
-		
+
 		isEnglishSource := sourceLang == "en"
 		isEnglishTarget := strings.Contains(targetLang, "English")
 
@@ -277,7 +303,9 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 
 		if shouldTranslate {
 			// Check Cancel
-			if ctx.Err() != nil { return "", ctx.Err() }
+			if ctx.Err() != nil {
+				return "", ctx.Err()
+			}
 
 			// A. Translate
 			logFunc(fmt.Sprintf("Translating text to %s (structured)...", targetLang))
@@ -288,7 +316,9 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 					runtime.EventsEmit(a.ctx, "task:progress", percent)
 				}
 			})
-			if ctx.Err() != nil { return "", ctx.Err() }
+			if ctx.Err() != nil {
+				return "", ctx.Err()
+			}
 			if err != nil {
 				runtime.LogErrorf(a.ctx, "Translation failed: %v", err)
 				logFunc(fmt.Sprintf("Translation failed: %v", err))
@@ -299,16 +329,20 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 		}
 
 		// Check Cancel
-		if ctx.Err() != nil { return "", ctx.Err() }
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
 
 		// B. Analyze
 		logFunc("Analyzing content...")
-		analysis, err = localAnalyzer.Analyze(transcript, targetLang, contextSize, func(token string) {
+		analysis, err = localAnalyzer.Analyze(transcript, cfg.CustomPrompt, targetLang, contextSize, func(token string) {
 			if ctx.Err() == nil {
 				runtime.EventsEmit(a.ctx, "task:analysis", token)
 			}
 		})
-		if ctx.Err() != nil { return "", ctx.Err() }
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "Analysis failed: %v", err)
 			logFunc("Analysis failed (is Ollama running?).")
@@ -321,7 +355,9 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	}
 
 	// Check Cancel
-	if ctx.Err() != nil { return "", ctx.Err() }
+	if ctx.Err() != nil {
+		return "", ctx.Err()
+	}
 
 	// 4. Save
 	// Reload storage manager too? VaultPath might have changed.
