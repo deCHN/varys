@@ -5,7 +5,7 @@ import {EventsOn} from "../wailsjs/runtime";
 export default function Dashboard() {
     const [resultText, setResultText] = useState("");
     const [url, setUrl] = useState('');
-    const [audioOnly, setAudioOnly] = useState(true);
+    const [downloadVideo, setDownloadVideo] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [logs, setLogs] = useState<string[]>([]);
     const [analysisStream, setAnalysisStream] = useState("");
@@ -78,6 +78,7 @@ export default function Dashboard() {
         setProgress(0);
         setIsProcessing(true);
         setResultText("Processing...");
+        const audioOnly = !downloadVideo;
         addLog(`Processing URL: ${url} (AudioOnly: ${audioOnly})`);
 
         SubmitTask(url, audioOnly).then((response: string) => {
@@ -120,16 +121,16 @@ export default function Dashboard() {
                     {/* Integrated Toggle Switch */}
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center bg-slate-700/50 rounded-full px-2 py-1">
                         <label className={`flex items-center cursor-pointer gap-2 select-none ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                            <span className={`text-xs font-medium transition-colors ${audioOnly ? 'text-emerald-400' : 'text-slate-400'}`}>Audio Only</span>
+                            <span className={`text-xs font-medium transition-colors ${downloadVideo ? 'text-blue-400' : 'text-slate-400'}`}>Video</span>
                             <div className="relative">
                                 <input
                                     type="checkbox"
                                     className="sr-only peer"
-                                    checked={audioOnly}
-                                    onChange={(e) => setAudioOnly(e.target.checked)}
+                                    checked={downloadVideo}
+                                    onChange={(e) => setDownloadVideo(e.target.checked)}
                                     disabled={isProcessing}
                                 />
-                                <div className="w-7 h-4 bg-slate-600 rounded-full peer peer-checked:bg-emerald-500/80 peer-focus:ring-2 peer-focus:ring-emerald-800 transition-colors"></div>
+                                <div className="w-7 h-4 bg-slate-600 rounded-full peer peer-checked:bg-blue-500/80 peer-focus:ring-2 peer-focus:ring-blue-800 transition-colors"></div>
                                 <div className="absolute left-[2px] top-[2px] bg-white w-3 h-3 rounded-full transition-transform peer-checked:translate-x-3"></div>
                             </div>
                         </label>
