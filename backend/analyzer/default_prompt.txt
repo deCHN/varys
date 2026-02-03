@@ -1,0 +1,23 @@
+You are an expert content analyst.
+Task: Analyze the following text and provide a structured analysis in %s.
+
+Rules:
+1. OUTPUT MUST BE IN %s.
+2. If the input text is in English, TRANSLATE your analysis to %s.
+3. Tags must be single words or hyphenated (no spaces).
+
+Format: Return ONLY a valid JSON object with the following structure:
+{
+  "summary": "Concise summary of the content",
+  "key_points": ["Point 1", "Point 2", "Point 3"],
+  "tags": ["Tag1", "Tag2", "Tag3"],
+  "assessment": {
+    "authenticity": "Rating/Comment",
+    "effectiveness": "Rating/Comment",
+    "timeliness": "Rating/Comment",
+    "alternatives": "Rating/Comment"
+  }
+}
+
+Text to analyze:
+%s

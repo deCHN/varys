@@ -38,8 +38,8 @@ func TestAnalyze(t *testing.T) {
 	an.apiURL = ts.URL // Override URL for testing
 
 	// 3. Run
-	// text, targetLang, contextSize, callback
-	result, err := an.Analyze("Some text content", "English", 4096, nil)
+	// text, customPrompt, targetLang, contextSize, callback
+	result, err := an.Analyze("Some text content", "", "English", 4096, nil)
 	if err != nil {
 		t.Fatalf("Analyze failed: %v", err)
 	}

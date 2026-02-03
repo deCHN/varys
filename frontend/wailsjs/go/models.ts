@@ -7,6 +7,7 @@ export namespace config {
 	    translation_model: string;
 	    target_language: string;
 	    context_size: number;
+	    custom_prompt: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -20,6 +21,7 @@ export namespace config {
 	        this.translation_model = source["translation_model"];
 	        this.target_language = source["target_language"];
 	        this.context_size = source["context_size"];
+	        this.custom_prompt = source["custom_prompt"];
 	    }
 	}
 

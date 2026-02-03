@@ -2,12 +2,16 @@ package analyzer
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 )
+
+//go:embed default_prompt.txt
+var defaultAnalysisPrompt string
 
 type Analyzer struct {
 	modelName string
@@ -43,7 +47,7 @@ type AnalysisResult struct {
 	Assessment map[string]string `json:"assessment"`
 }
 
-func (a *Analyzer) Analyze(text string, targetLang string, contextSize int, onToken func(string)) (*AnalysisResult, error) {
+func (a *Analyzer) Analyze(text string, customPrompt string, targetLang string, contextSize int, onToken func(string)) (*AnalysisResult, error) {
 	if targetLang == "" {
 		targetLang = "Simplified Chinese"
 	}
@@ -51,190 +55,80 @@ func (a *Analyzer) Analyze(text string, targetLang string, contextSize int, onTo
 		contextSize = 8192 // Fallback default
 	}
 
-		prompt := fmt.Sprintf(`You are an expert content analyst.
-
-	Task: Analyze the following text and provide a structured analysis in %s.
-
-	Rules:
-
-	1. OUTPUT MUST BE IN %s.
-
-	2. If the input text is in English, TRANSLATE your analysis to %s.
-
-	3. Tags must be single words or hyphenated (no spaces).
-
-	
-
-	Format: Return ONLY a valid JSON object with the following structure:
-
-	{
-
-	  "summary": "Concise summary of the content",
-
-	  "key_points": ["Point 1", "Point 2", "Point 3"],
-
-	  "tags": ["Tag1", "Tag2", "Tag3"],
-
-	  "assessment": {
-
-	    "authenticity": "Rating/Comment",
-
-	    "effectiveness": "Rating/Comment",
-
-	    "timeliness": "Rating/Comment",
-
-	    "alternatives": "Rating/Comment"
-
-	  }
-
+	var prompt string
+	if customPrompt != "" {
+		prompt = fmt.Sprintf("%s\n\nText to analyze:\n%s", customPrompt, text)
+	} else {
+		prompt = fmt.Sprintf(defaultAnalysisPrompt, targetLang, targetLang, targetLang, text)
 	}
 
-	
+	reqBody := Request{
+		Model:  a.modelName,
+		Prompt: prompt,
+		Stream: true,
+		Options: map[string]interface{}{
+			"num_ctx": contextSize,
+		},
+	}
 
-	Text to analyze:
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
 
-	%s`, targetLang, targetLang, targetLang, text)
+	resp, err := http.Post(a.apiURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("ollama request failed: %w", err)
+	}
+	defer resp.Body.Close()
 
-	
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("ollama error %s: %s", resp.Status, string(body))
+	}
 
-		reqBody := Request{
+	var fullResponse strings.Builder
+	decoder := json.NewDecoder(resp.Body)
 
-			Model:  a.modelName,
-
-			Prompt: prompt,
-
-			Stream: true,
-
-			Options: map[string]interface{}{
-
-				"num_ctx": contextSize,
-
-			},
-
-		}
-
-	
-
-		jsonData, err := json.Marshal(reqBody)
-
-		if err != nil {
-
-			return nil, err
-
-		}
-
-	
-
-		resp, err := http.Post(a.apiURL, "application/json", bytes.NewBuffer(jsonData))
-
-		if err != nil {
-
-			return nil, fmt.Errorf("ollama request failed: %w", err)
-
-		}
-
-		defer resp.Body.Close()
-
-	
-
-		if resp.StatusCode != http.StatusOK {
-
-			body, _ := io.ReadAll(resp.Body)
-
-			return nil, fmt.Errorf("ollama error %s: %s", resp.Status, string(body))
-
-		}
-
-	
-
-		var fullResponse strings.Builder
-
-		decoder := json.NewDecoder(resp.Body)
-
-	
-
-		for {
-
-			var result Response
-
-			if err := decoder.Decode(&result); err != nil {
-
-				if err == io.EOF {
-
-					break
-
-				}
-
-				return nil, fmt.Errorf("failed to decode stream: %w", err)
-
-			}
-
-	
-
-			fullResponse.WriteString(result.Response)
-
-			if onToken != nil {
-
-				onToken(result.Response)
-
-			}
-
-	
-
-			if result.Done {
-
+	for {
+		var result Response
+		if err := decoder.Decode(&result); err != nil {
+			if err == io.EOF {
 				break
-
 			}
-
+			return nil, fmt.Errorf("failed to decode stream: %w", err)
 		}
 
-	
-
-		// Clean up markdown code blocks if the LLM wrapped the output
-
-		responseText := fullResponse.String()
-
-		if idx := strings.Index(responseText, "{"); idx != -1 {
-
-			responseText = responseText[idx:]
-
+		fullResponse.WriteString(result.Response)
+		if onToken != nil {
+			onToken(result.Response)
 		}
 
-		if idx := strings.LastIndex(responseText, "}"); idx != -1 {
-
-			responseText = responseText[:idx+1]
-
+		if result.Done {
+			break
 		}
-
-	
-
-		var analysis AnalysisResult
-
-		if err := json.Unmarshal([]byte(responseText), &analysis); err != nil {
-
-			// Fallback: try to return just summary if JSON fails
-
-			return &AnalysisResult{Summary: responseText}, nil
-
-		}
-
-	
-
-		// Post-process: Sanitize Tags
-
-		for i, tag := range analysis.Tags {
-
-			// Replace spaces with hyphens
-
-			analysis.Tags[i] = strings.ReplaceAll(tag, " ", "-")
-
-		}
-
-	
-
-		return &analysis, nil
-
 	}
 
-	
+	// Clean up markdown code blocks if the LLM wrapped the output
+	responseText := fullResponse.String()
+	if idx := strings.Index(responseText, "{"); idx != -1 {
+		responseText = responseText[idx:]
+	}
+	if idx := strings.LastIndex(responseText, "}"); idx != -1 {
+		responseText = responseText[:idx+1]
+	}
+
+	var analysis AnalysisResult
+	if err := json.Unmarshal([]byte(responseText), &analysis); err != nil {
+		// Fallback: try to return just summary if JSON fails
+		return &AnalysisResult{Summary: responseText}, nil
+	}
+
+	// Post-process: Sanitize Tags
+	for i, tag := range analysis.Tags {
+		// Replace spaces with hyphens
+		analysis.Tags[i] = strings.ReplaceAll(tag, " ", "-")
+	}
+
+	return &analysis, nil
+}

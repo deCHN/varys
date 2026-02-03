@@ -1,12 +1,12 @@
 package downloader
 
 import (
+	"Varys/backend/dependency"
 	"bufio"
 	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"Varys/backend/dependency"
 )
 
 type Downloader struct {

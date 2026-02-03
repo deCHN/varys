@@ -9,11 +9,12 @@ import (
 
 type Config struct {
 	VaultPath        string `json:"vault_path"`
-	ModelPath        string `json:"model_path"` // Whisper Model Path
-	LLMModel         string `json:"llm_model"`  // Ollama Model Name
+	ModelPath        string `json:"model_path"`        // Whisper Model Path
+	LLMModel         string `json:"llm_model"`         // Ollama Model Name
 	TranslationModel string `json:"translation_model"` // Ollama Model for Translation (Default: qwen3:0.6b)
-	TargetLanguage   string `json:"target_language"` // Output language for analysis and translation
-	ContextSize      int    `json:"context_size"`    // Context window size for Ollama (default: 8192)
+	TargetLanguage   string `json:"target_language"`   // Output language for analysis and translation
+	ContextSize      int    `json:"context_size"`      // Context window size for Ollama (default: 8192)
+	CustomPrompt     string `json:"custom_prompt"`     // Custom user prompt for analysis
 }
 
 type Manager struct {

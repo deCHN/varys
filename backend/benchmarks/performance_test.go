@@ -2,10 +2,10 @@ package benchmarks
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
-	"os"
 
 	"Varys/backend/analyzer"
 	"Varys/backend/translation"
@@ -13,14 +13,14 @@ import (
 
 func TestPerformanceBaseline(t *testing.T) {
 	// Setup
-	
+
 	// Test Cases
 	testFiles := []string{
 		"../../res/test_audio.wav",
 		"../../res/testaudio_8000_20s.wav",
 		"../../res/testaudio_48000_20s.wav",
 	}
-	
+
 	contextSizes := []int{1024, 2048, 4096}
 
 	fmt.Printf("| %-30s | %-10s | %-15s | %-15s | %-15s |\n", "Audio File", "Context", "Transcribe(s)", "Analyze(s)", "Translate(s)")
@@ -29,7 +29,7 @@ func TestPerformanceBaseline(t *testing.T) {
 	for _, fileRel := range testFiles {
 		wd, _ := os.Getwd()
 		absPath := filepath.Join(wd, fileRel)
-		
+
 		if _, err := os.Stat(absPath); os.IsNotExist(err) {
 			t.Logf("Skipping %s (not found)", fileRel)
 			continue
@@ -44,10 +44,10 @@ func TestPerformanceBaseline(t *testing.T) {
 			}
 
 			// 2. Benchmark Analysis (LLM)
-			an := analyzer.NewAnalyzer("qwen3:8b") 
-			
+			an := analyzer.NewAnalyzer("qwen3:8b")
+
 			start := time.Now()
-			_, err := an.Analyze(transcript, "Simplified Chinese", ctxSize, nil)
+			_, err := an.Analyze(transcript, "", "Simplified Chinese", ctxSize, nil)
 			if err != nil {
 				t.Errorf("Analyze failed for %s (ctx %d): %v", fileRel, ctxSize, err)
 				continue

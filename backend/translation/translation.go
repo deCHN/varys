@@ -60,7 +60,7 @@ func (t *Translator) Translate(text string, targetLang string, contextSize int, 
 	// Small models (0.6b) are much more accurate with numbering and small batches.
 	const batchSize = 7
 	var allPairs []TranslationPair
-	
+
 	totalBatches := (len(sentences) + batchSize - 1) / batchSize
 
 	for i := 0; i < len(sentences); i += batchSize {
@@ -99,7 +99,7 @@ Input:
 			Options: map[string]interface{}{
 				"num_ctx":     contextSize,
 				"num_predict": 2048, // Smaller output expected per batch
-				"temperature": 0.1,    // Lower temperature for stricter adherence
+				"temperature": 0.1,  // Lower temperature for stricter adherence
 			},
 		}
 
@@ -153,7 +153,7 @@ Input:
 func (t *Translator) parseNumberedOutput(output string, expectedCount int) []string {
 	lines := strings.Split(output, "\n")
 	results := make([]string, 0, expectedCount)
-	
+
 	// Regex to match "1. Text" or "1: Text" or just the text if model forgot numbering
 	reNumber := regexp.MustCompile(`^\d+[\.\:\s]+(.*)$`)
 
@@ -162,7 +162,7 @@ func (t *Translator) parseNumberedOutput(output string, expectedCount int) []str
 		if line == "" {
 			continue
 		}
-		
+
 		matches := reNumber.FindStringSubmatch(line)
 		if len(matches) > 1 {
 			results = append(results, strings.TrimSpace(matches[1]))
@@ -171,9 +171,9 @@ func (t *Translator) parseNumberedOutput(output string, expectedCount int) []str
 			results = append(results, line)
 		}
 	}
-	
-	// If the model produced a single block instead of lines, 
-	// this parser might return too few items. 
+
+	// If the model produced a single block instead of lines,
+	// this parser might return too few items.
 	// The caller handles padding with "missing".
 	return results
 }
@@ -181,32 +181,32 @@ func (t *Translator) parseNumberedOutput(output string, expectedCount int) []str
 // splitSentences splits text into sentences or logical segments using regex.
 func (t *Translator) splitSentences(text string) []string {
 	// Split by common sentence terminators (. ? ! \n) followed by space or end of string
-	// We want to keep the delimiter attached to the previous sentence if possible, 
+	// We want to keep the delimiter attached to the previous sentence if possible,
 	// but Go's regex split is simple.
 	// Alternative: Walk through and split.
-	
+
 	// Simple approach: Use regex to find sentences.
 	// This regex matches non-empty sequences ending in punctuation or newline.
 	// re := regexp.MustCompile(`[^.!?\n]+[.!?\n]+`)
 	// matches := re.FindAllString(text, -1)
-	
+
 	// If text has no punctuation, it might be one huge block.
 	// Let's use a simpler split for robustness: split by newlines first (whisper segments),
 	// then maybe split long lines.
-	
+
 	// Whisper output is already segmented by logic, often separated by ". "
-	
+
 	var segments []string
-	
+
 	// 1. Split by hard newlines first
 	lines := strings.Split(text, "\n")
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		
+
 		// 2. Further split by ". " "? " "! " if the line is very long (>200 chars)
 		// Otherwise keep it as one unit for context.
 		if len(line) > 200 {
@@ -222,6 +222,6 @@ func (t *Translator) splitSentences(text string) []string {
 			segments = append(segments, line)
 		}
 	}
-	
+
 	return segments
 }

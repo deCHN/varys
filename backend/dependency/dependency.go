@@ -53,8 +53,6 @@ func (m *Manager) GetBinaryPath(name string) string {
 
 }
 
-
-
 // CheckSystemDependency looks for a binary in the system PATH and common Homebrew locations.
 
 // Returns the path and true if found, empty string and false otherwise.
@@ -69,8 +67,6 @@ func (m *Manager) CheckSystemDependency(name string) (string, bool) {
 
 	}
 
-
-
 	// 2. Check common Homebrew locations (macOS)
 
 	commonPaths := []string{
@@ -78,10 +74,7 @@ func (m *Manager) CheckSystemDependency(name string) (string, bool) {
 		filepath.Join("/opt/homebrew/bin", name),
 
 		filepath.Join("/usr/local/bin", name),
-
 	}
-
-
 
 	for _, p := range commonPaths {
 
@@ -92,8 +85,6 @@ func (m *Manager) CheckSystemDependency(name string) (string, bool) {
 		}
 
 	}
-
-
 
 	return "", false
 

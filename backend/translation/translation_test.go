@@ -43,18 +43,16 @@ func TestTranslate(t *testing.T) {
 		t.Errorf("Expected 2 results, got %d", len(results))
 	}
 
-		if strings.TrimRight(results[0].Translated, "。.") != "你好" {
+	if strings.TrimRight(results[0].Translated, "。.") != "你好" {
 
-			t.Errorf("Expected '你好', got: %s", results[0].Translated)
-
-		}
-
-		if strings.TrimRight(results[1].Translated, "。.") != "世界" {
-
-			t.Errorf("Expected '世界', got: %s", results[1].Translated)
-
-		}
+		t.Errorf("Expected '你好', got: %s", results[0].Translated)
 
 	}
 
-	
+	if strings.TrimRight(results[1].Translated, "。.") != "世界" {
+
+		t.Errorf("Expected '世界', got: %s", results[1].Translated)
+
+	}
+
+}

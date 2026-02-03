@@ -1,12 +1,12 @@
 package downloader
 
 import (
+	"Varys/backend/dependency"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
-	"Varys/backend/dependency"
 )
 
 func TestDownloadMedia(t *testing.T) {
@@ -46,40 +46,40 @@ func TestDownloadMedia(t *testing.T) {
 		// We can't easily "know" the outputDir inside the script unless we parse "$7" (the -o arg value).
 		// Let's try to extract the -o argument value.
 		// Arg structure: ... -o outputTemplate ...
-				// We can cheat: The test will use `tempDir` as outputDir too.
-				// So we create the file at `tempDir/temp_media.m4a`.
-				
-				targetFile := filepath.Join(tempDir, "temp_media.m4a")
-				scriptContent = fmt.Sprintf("#!/bin/sh\ntouch \"%s\"\necho 'Mock Download Finished'", targetFile)
-			}
-		
-			if err := os.WriteFile(mockYtPath, []byte(scriptContent), 0755); err != nil {
-				t.Fatal(err)
-			}
-		
-			// Update PATH for CheckSystemDependency
-			oldPath := os.Getenv("PATH")
-			defer os.Setenv("PATH", oldPath)
-			os.Setenv("PATH", binDir+string(os.PathListSeparator)+oldPath)
-		
-			// 3. Initialize Downloader
-			depMgr := &dependency.Manager{}
-			dl := NewDownloader(depMgr)
-		
-			// 4. Run Download
-			// We use tempDir as outputDir
-			// audioOnly = true for this test
-			resultPath, err := dl.DownloadMedia("http://fake.url", tempDir, true, nil)
-			if err != nil {
-				t.Fatalf("DownloadMedia failed: %v", err)
-			}
-		
-			// 5. Verify
-			expected := filepath.Join(tempDir, "temp_media.m4a")
-			if resultPath != expected {
-				t.Errorf("Expected path %s, got %s", expected, resultPath)
-			}
-			if _, err := os.Stat(expected); os.IsNotExist(err) {
+		// We can cheat: The test will use `tempDir` as outputDir too.
+		// So we create the file at `tempDir/temp_media.m4a`.
+
+		targetFile := filepath.Join(tempDir, "temp_media.m4a")
+		scriptContent = fmt.Sprintf("#!/bin/sh\ntouch \"%s\"\necho 'Mock Download Finished'", targetFile)
+	}
+
+	if err := os.WriteFile(mockYtPath, []byte(scriptContent), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Update PATH for CheckSystemDependency
+	oldPath := os.Getenv("PATH")
+	defer os.Setenv("PATH", oldPath)
+	os.Setenv("PATH", binDir+string(os.PathListSeparator)+oldPath)
+
+	// 3. Initialize Downloader
+	depMgr := &dependency.Manager{}
+	dl := NewDownloader(depMgr)
+
+	// 4. Run Download
+	// We use tempDir as outputDir
+	// audioOnly = true for this test
+	resultPath, err := dl.DownloadMedia("http://fake.url", tempDir, true, nil)
+	if err != nil {
+		t.Fatalf("DownloadMedia failed: %v", err)
+	}
+
+	// 5. Verify
+	expected := filepath.Join(tempDir, "temp_media.m4a")
+	if resultPath != expected {
+		t.Errorf("Expected path %s, got %s", expected, resultPath)
+	}
+	if _, err := os.Stat(expected); os.IsNotExist(err) {
 		t.Error("Output file was not created")
 	}
 }

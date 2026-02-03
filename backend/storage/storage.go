@@ -1,7 +1,6 @@
 package storage
 
 import (
-
 	"io"
 
 	"os"
@@ -15,44 +14,35 @@ import (
 	"text/template"
 
 	"Varys/backend/translation"
-
 )
-
-
-
-
 
 // NoteData holds the data for the markdown note
 
 type NoteData struct {
+	Title string
 
-	Title            string
+	URL string
 
-	URL              string
+	Language string
 
-	Language         string
+	Summary string
 
-	Summary          string
+	KeyPoints []string
 
-	KeyPoints        []string
+	Tags []string
 
-	Tags             []string
+	Assessment map[string]string
 
-	Assessment       map[string]string
-
-	OriginalText     string
+	OriginalText string
 
 	TranslationPairs []translation.TranslationPair
 
-	AudioFile        string
+	AudioFile string
 
-	CreatedTime      string
+	CreatedTime string
 
-	AssetsFolder     string
-
+	AssetsFolder string
 }
-
-
 
 type Manager struct {
 	VaultPath string
@@ -115,14 +105,20 @@ func (m *Manager) MoveMedia(sourcePath string, targetName string) (string, error
 	if err != nil {
 		// Fallback to Copy
 		src, err := os.Open(sourcePath)
-		if err != nil { return "", err }
+		if err != nil {
+			return "", err
+		}
 		defer src.Close()
 
 		dst, err := os.Create(destPath)
-		if err != nil { return "", err }
+		if err != nil {
+			return "", err
+		}
 		defer dst.Close()
 
-		if _, err := io.Copy(dst, src); err != nil { return "", err }
+		if _, err := io.Copy(dst, src); err != nil {
+			return "", err
+		}
 		os.Remove(sourcePath)
 	}
 
