@@ -15,6 +15,9 @@ type Config struct {
 	TargetLanguage   string `json:"target_language"`   // Output language for analysis and translation
 	ContextSize      int    `json:"context_size"`      // Context window size for Ollama (default: 8192)
 	CustomPrompt     string `json:"custom_prompt"`     // Custom user prompt for analysis
+	AIProvider       string `json:"ai_provider"`       // "ollama" or "openai"
+	OpenAIModel      string `json:"openai_model"`      // e.g. "gpt-4o"
+	OpenAIKey        string `json:"openai_key"`        // User provided API Key
 }
 
 type Manager struct {
@@ -57,6 +60,12 @@ func (m *Manager) Load() (*Config, error) {
 	}
 	if cfg.TranslationModel == "" {
 		cfg.TranslationModel = "qwen3:0.6b"
+	}
+	if cfg.AIProvider == "" {
+		cfg.AIProvider = "ollama"
+	}
+	if cfg.OpenAIModel == "" {
+		cfg.OpenAIModel = "gpt-4o"
 	}
 
 	return &cfg, nil

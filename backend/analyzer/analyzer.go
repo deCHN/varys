@@ -1,12 +1,10 @@
 package analyzer
 
 import (
-	"bytes"
+	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 )
 
@@ -14,30 +12,19 @@ import (
 var defaultAnalysisPrompt string
 
 type Analyzer struct {
-	modelName string
-	apiURL    string
+	provider LLMProvider
 }
 
-func NewAnalyzer(model string) *Analyzer {
-	if model == "" {
-		model = "qwen3:8b" // Default
+func NewAnalyzer(providerType, apiKey, model string) *Analyzer {
+	var provider LLMProvider
+	if providerType == "openai" {
+		provider = NewOpenAIProvider(apiKey, model)
+	} else {
+		provider = NewOllamaProvider(model)
 	}
 	return &Analyzer{
-		modelName: model,
-		apiURL:    "http://localhost:11434/api/generate",
+		provider: provider,
 	}
-}
-
-type Request struct {
-	Model   string                 `json:"model"`
-	Prompt  string                 `json:"prompt"`
-	Stream  bool                   `json:"stream"`
-	Options map[string]interface{} `json:"options,omitempty"`
-}
-
-type Response struct {
-	Response string `json:"response"`
-	Done     bool   `json:"done"`
 }
 
 type AnalysisResult struct {
@@ -47,14 +34,11 @@ type AnalysisResult struct {
 	Assessment map[string]string `json:"assessment"`
 }
 
-func (a *Analyzer) Analyze(text string, customPrompt string, targetLang string, contextSize int, onToken func(string)) (*AnalysisResult, error) {
+func (a *Analyzer) Analyze(ctx context.Context, text string, customPrompt string, targetLang string, contextSize int, onToken func(string)) (*AnalysisResult, error) {
 	if targetLang == "" {
 		targetLang = "Simplified Chinese"
 	}
-	if contextSize == 0 {
-		contextSize = 8192 // Fallback default
-	}
-
+	
 	var prompt string
 	if customPrompt != "" {
 		prompt = fmt.Sprintf("%s\n\nText to analyze:\n%s", customPrompt, text)
@@ -62,55 +46,17 @@ func (a *Analyzer) Analyze(text string, customPrompt string, targetLang string, 
 		prompt = fmt.Sprintf(defaultAnalysisPrompt, targetLang, targetLang, targetLang, text)
 	}
 
-	reqBody := Request{
-		Model:  a.modelName,
-		Prompt: prompt,
-		Stream: true,
-		Options: map[string]interface{}{
-			"num_ctx": contextSize,
-		},
+	options := map[string]interface{}{
+		"num_ctx":     contextSize,
+		"temperature": 0.1,
 	}
 
-	jsonData, err := json.Marshal(reqBody)
+	responseText, err := a.provider.Chat(ctx, prompt, options, onToken)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := http.Post(a.apiURL, "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("ollama request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("ollama error %s: %s", resp.Status, string(body))
-	}
-
-	var fullResponse strings.Builder
-	decoder := json.NewDecoder(resp.Body)
-
-	for {
-		var result Response
-		if err := decoder.Decode(&result); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, fmt.Errorf("failed to decode stream: %w", err)
-		}
-
-		fullResponse.WriteString(result.Response)
-		if onToken != nil {
-			onToken(result.Response)
-		}
-
-		if result.Done {
-			break
-		}
-	}
-
 	// Clean up markdown code blocks if the LLM wrapped the output
-	responseText := fullResponse.String()
 	if idx := strings.Index(responseText, "{"); idx != -1 {
 		responseText = responseText[idx:]
 	}

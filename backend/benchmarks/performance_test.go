@@ -1,6 +1,7 @@
 package benchmarks
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -44,10 +45,10 @@ func TestPerformanceBaseline(t *testing.T) {
 			}
 
 			// 2. Benchmark Analysis (LLM)
-			an := analyzer.NewAnalyzer("qwen3:8b")
+			an := analyzer.NewAnalyzer("ollama", "", "qwen3:8b")
 
 			start := time.Now()
-			_, err := an.Analyze(transcript, "", "Simplified Chinese", ctxSize, nil)
+			_, err := an.Analyze(context.Background(), transcript, "", "Simplified Chinese", ctxSize, nil)
 			if err != nil {
 				t.Errorf("Analyze failed for %s (ctx %d): %v", fileRel, ctxSize, err)
 				continue

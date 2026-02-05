@@ -93,7 +93,16 @@ func (a *App) startup(ctx context.Context) {
 		translationModel = "qwen3:0.6b"
 	}
 
-	a.analyzer = analyzer.NewAnalyzer(llmModel)
+	aiProvider := cfg.AIProvider
+	analyzerModel := llmModel
+	if aiProvider == "openai" {
+		analyzerModel = cfg.OpenAIModel
+		if analyzerModel == "" {
+			analyzerModel = "gpt-4o"
+		}
+	}
+
+	a.analyzer = analyzer.NewAnalyzer(aiProvider, cfg.OpenAIKey, analyzerModel)
 	a.translator = translation.NewTranslator(translationModel)
 
 	runtime.LogInfo(a.ctx, "Backend initialized successfully.")
@@ -276,7 +285,16 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 		translationModel = "qwen3:0.6b"
 	}
 
-	localAnalyzer := analyzer.NewAnalyzer(llmModel)
+	aiProvider := cfg.AIProvider
+	analyzerModel := llmModel
+	if aiProvider == "openai" {
+		analyzerModel = cfg.OpenAIModel
+		if analyzerModel == "" {
+			analyzerModel = "gpt-4o"
+		}
+	}
+
+	localAnalyzer := analyzer.NewAnalyzer(aiProvider, cfg.OpenAIKey, analyzerModel)
 	localTranslator := translation.NewTranslator(translationModel)
 
 	targetLang := cfg.TargetLanguage
@@ -343,7 +361,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 
 		// B. Analyze
 		logFunc("Analyzing content...")
-		analysis, err = localAnalyzer.Analyze(transcript, cfg.CustomPrompt, targetLang, contextSize, func(token string) {
+		analysis, err = localAnalyzer.Analyze(ctx, transcript, cfg.CustomPrompt, targetLang, contextSize, func(token string) {
 			if ctx.Err() == nil {
 				runtime.EventsEmit(a.ctx, "task:analysis", token)
 			}
@@ -353,7 +371,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 		}
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "Analysis failed: %v", err)
-			logFunc("Analysis failed (is Ollama running?).")
+			logFunc(fmt.Sprintf("Analysis failed: %v", err))
 			summary = "Analysis failed."
 			analysis = &analyzer.AnalysisResult{}
 		} else {

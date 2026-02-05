@@ -9,6 +9,9 @@ interface Config {
     target_language: string;
     context_size: number;
     custom_prompt: string;
+    ai_provider: string;
+    openai_model: string;
+    openai_key: string;
 }
 
 export default function Settings() {
@@ -19,7 +22,10 @@ export default function Settings() {
         translation_model: 'qwen3:0.6b',
         target_language: '', 
         context_size: 8192,
-        custom_prompt: ''
+        custom_prompt: '',
+        ai_provider: 'ollama',
+        openai_model: 'gpt-4o',
+        openai_key: ''
     });
     const [deps, setDeps] = useState<any>({});
     const [ollamaModels, setOllamaModels] = useState<string[]>([]);
@@ -142,25 +148,66 @@ Format: Return ONLY a valid JSON object with the following structure:
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-2">Ollama Model</label>
-                        {ollamaModels.length > 0 ? (
-                            <select
-                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none"
-                                value={cfg.llm_model}
-                                onChange={e => setCfg({...cfg, llm_model: e.target.value})}
-                            >
-                                <option value="" disabled>Select a model...</option>
-                                {ollamaModels.map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
-                        ) : (
+                        <label className="block text-sm font-medium text-slate-400 mb-2">AI Provider</label>
+                        <select
+                            className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none"
+                            value={cfg.ai_provider || 'ollama'}
+                            onChange={e => setCfg({...cfg, ai_provider: e.target.value})}
+                        >
+                            <option value="ollama">Ollama (Local)</option>
+                            <option value="openai">OpenAI (Cloud)</option>
+                        </select>
+                    </div>
+
+                    {cfg.ai_provider === 'openai' ? (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-2">OpenAI Model</label>
                             <input
                                 className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                                value={cfg.llm_model}
-                                onChange={e => setCfg({...cfg, llm_model: e.target.value})}
-                                placeholder="Type model name (e.g. qwen2.5:7b)"
+                                value={cfg.openai_model || 'gpt-4o'}
+                                onChange={e => setCfg({...cfg, openai_model: e.target.value})}
+                                placeholder="gpt-4o"
                             />
-                        )}
-                    </div>
+                            
+                            <label className="block text-sm font-medium text-slate-400 mt-4 mb-2 flex justify-between">
+                                <span>API Key</span>
+                                <span className={`text-xs ${cfg.openai_key && cfg.openai_key.length > 20 ? 'text-green-400' : 'text-slate-500'}`}>
+                                    {cfg.openai_key ? `Length: ${cfg.openai_key.length}` : 'Not Set'}
+                                </span>
+                            </label>
+                            <input
+                                type="password"
+                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono"
+                                value={cfg.openai_key || ''}
+                                onChange={e => setCfg({...cfg, openai_key: e.target.value})}
+                                placeholder="sk-..."
+                            />
+                            <p className="mt-1 text-xs text-slate-500">
+                                Your API Key is stored locally in <code>config.json</code>.
+                            </p>
+                        </div>
+                    ) : (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-2">Ollama Model</label>
+                            {ollamaModels.length > 0 ? (
+                                <select
+                                    className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none"
+                                    value={cfg.llm_model}
+                                    onChange={e => setCfg({...cfg, llm_model: e.target.value})}
+                                >
+                                    <option value="" disabled>Select a model...</option>
+                                    {ollamaModels.map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                            ) : (
+                                <input
+                                    className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                    value={cfg.llm_model}
+                                    onChange={e => setCfg({...cfg, llm_model: e.target.value})}
+                                    placeholder="Type model name (e.g. qwen2.5:7b)"
+                                />
+                            )}
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-slate-400 mb-2">Target Language</label>

@@ -8,6 +8,8 @@ export namespace config {
 	    target_language: string;
 	    context_size: number;
 	    custom_prompt: string;
+	    ai_provider: string;
+	    openai_model: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -22,6 +24,8 @@ export namespace config {
 	        this.target_language = source["target_language"];
 	        this.context_size = source["context_size"];
 	        this.custom_prompt = source["custom_prompt"];
+	        this.ai_provider = source["ai_provider"];
+	        this.openai_model = source["openai_model"];
 	    }
 	}
 

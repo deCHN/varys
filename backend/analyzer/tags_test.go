@@ -1,35 +1,26 @@
 package analyzer
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
+	"context"
 	"testing"
 )
 
 func TestTagSanitization(t *testing.T) {
-	// 1. Mock Server returning tags with spaces
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Mock valid JSON response
-		resp := Response{
-			Response: `{
-				"summary": "Summary",
-				"key_points": [],
-				"tags": ["note taking", "product review", "software-dev"],
-				"assessment": {}
-			}`,
-			Done: true,
-		}
-		json.NewEncoder(w).Encode(resp)
-	}))
-	defer ts.Close()
+	// 1. Mock
+	mock := &MockProvider{
+		Response: `{
+			"summary": "Summary",
+			"key_points": [],
+			"tags": ["note taking", "product review", "software-dev"],
+			"assessment": {}
+		}`,
+	}
 
 	// 2. Init
-	an := NewAnalyzer("test-model")
-	an.apiURL = ts.URL
+	an := &Analyzer{provider: mock}
 
 	// 3. Run
-	result, err := an.Analyze("content", "", "English", 4096, nil)
+	result, err := an.Analyze(context.Background(), "content", "", "English", 4096, nil)
 	if err != nil {
 		t.Fatalf("Analyze failed: %v", err)
 	}

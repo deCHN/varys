@@ -1,45 +1,37 @@
 package analyzer
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
+	"context"
 	"testing"
 )
 
+type MockProvider struct {
+	Response string
+}
+
+func (m *MockProvider) Chat(ctx context.Context, prompt string, options map[string]interface{}, streamCallback func(string)) (string, error) {
+	if streamCallback != nil {
+		streamCallback(m.Response)
+	}
+	return m.Response, nil
+}
+
 func TestAnalyze(t *testing.T) {
-	// 1. Mock Server
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			t.Errorf("Expected POST, got %s", r.Method)
-		}
-
-		// Verify body
-		var req Request
-		json.NewDecoder(r.Body).Decode(&req)
-		if req.Model != "test-model" {
-			t.Errorf("Expected model test-model, got %s", req.Model)
-		}
-		if req.Prompt == "" {
-			t.Error("Empty prompt")
-		}
-
-		// Return mock response
-		resp := Response{
-			Response: "This is a summary.",
-			Done:     true,
-		}
-		json.NewEncoder(w).Encode(resp)
-	}))
-	defer ts.Close()
+	// 1. Mock LLM Response (Valid JSON)
+	mock := &MockProvider{
+		Response: `{
+			"summary": "This is a summary.",
+			"key_points": ["Point 1"],
+			"tags": ["tag1"],
+			"assessment": {}
+		}`,
+	}
 
 	// 2. Init
-	an := NewAnalyzer("test-model")
-	an.apiURL = ts.URL // Override URL for testing
+	an := &Analyzer{provider: mock}
 
 	// 3. Run
-	// text, customPrompt, targetLang, contextSize, callback
-	result, err := an.Analyze("Some text content", "", "English", 4096, nil)
+	result, err := an.Analyze(context.Background(), "Some text", "", "English", 4096, nil)
 	if err != nil {
 		t.Fatalf("Analyze failed: %v", err)
 	}
