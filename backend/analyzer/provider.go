@@ -7,4 +7,8 @@ type LLMProvider interface {
 	// Chat sends a prompt to the LLM and returns the full response.
 	// If streamCallback is provided, it will receive chunks of the response.
 	Chat(ctx context.Context, prompt string, options map[string]interface{}, streamCallback func(string)) (string, error)
+	// Name returns the provider name (e.g. "ollama", "openai")
+	Name() string
+	// Model returns the model name being used
+	Model() string
 }

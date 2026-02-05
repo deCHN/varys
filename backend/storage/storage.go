@@ -44,6 +44,10 @@ type NoteData struct {
 	CreatedTime string
 
 	AssetsFolder string
+
+	AIProvider string
+
+	AIModel string
 }
 
 type Manager struct {
@@ -137,6 +141,8 @@ created: {{.CreatedTime}}
 source: "{{.URL}}"
 type: auto_clipper
 language: {{.Language}}
+ai_provider: {{.AIProvider}}
+ai_model: {{.AIModel}}
 tags:
 {{- range .Tags}}
   - {{.}}

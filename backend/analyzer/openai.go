@@ -17,14 +17,11 @@ type OpenAIProvider struct {
 }
 
 func NewOpenAIProvider(apiKey, model string) *OpenAIProvider {
-	// apiKey is now required to be passed from config
-	
 	if model == "" {
 		model = "gpt-4o"
 	}
 	
 	config := openai.DefaultConfig(apiKey)
-	// Support BaseURL from env for proxy/compatible APIs
 	if baseURL := os.Getenv("OPENAI_BASE_URL"); baseURL != "" {
 		config.BaseURL = baseURL
 	}
@@ -52,9 +49,7 @@ func (p *OpenAIProvider) Chat(ctx context.Context, prompt string, options map[st
 		Stream: true,
 	}
     
-	// Map temperature if present, ignore num_ctx
 	if val, ok := options["temperature"]; ok {
-		// handle float64 (json default) or float32
 		if t, ok := val.(float64); ok {
 			req.Temperature = float32(t)
 		} else if t, ok := val.(float32); ok {
@@ -86,4 +81,12 @@ func (p *OpenAIProvider) Chat(ctx context.Context, prompt string, options map[st
 	}
 
 	return fullResponse.String(), nil
+}
+
+func (p *OpenAIProvider) Name() string {
+	return "openai"
+}
+
+func (p *OpenAIProvider) Model() string {
+	return p.model
 }

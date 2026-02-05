@@ -415,6 +415,8 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 		AudioFile:        finalMedia,
 		AssetsFolder:     "assets",
 		CreatedTime:      time.Now().Format("2006-01-02 15:04"),
+		AIProvider:       analysis.Provider,
+		AIModel:          analysis.Model,
 	}
 
 	notePath, err := localStorage.SaveNote(noteData)

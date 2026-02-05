@@ -32,6 +32,8 @@ type AnalysisResult struct {
 	KeyPoints  []string          `json:"key_points"`
 	Tags       []string          `json:"tags"`
 	Assessment map[string]string `json:"assessment"`
+	Provider   string            `json:"provider"`
+	Model      string            `json:"model"`
 }
 
 func (a *Analyzer) Analyze(ctx context.Context, text string, customPrompt string, targetLang string, contextSize int, onToken func(string)) (*AnalysisResult, error) {
@@ -67,8 +69,12 @@ func (a *Analyzer) Analyze(ctx context.Context, text string, customPrompt string
 	var analysis AnalysisResult
 	if err := json.Unmarshal([]byte(responseText), &analysis); err != nil {
 		// Fallback: try to return just summary if JSON fails
-		return &AnalysisResult{Summary: responseText}, nil
+		analysis = AnalysisResult{Summary: responseText}
 	}
+
+	// Fill provider info
+	analysis.Provider = a.provider.Name()
+	analysis.Model = a.provider.Model()
 
 	// Post-process: Sanitize Tags
 	for i, tag := range analysis.Tags {

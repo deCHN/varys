@@ -92,3 +92,11 @@ func (p *OllamaProvider) Chat(ctx context.Context, prompt string, options map[st
 
 	return fullResponse.String(), nil
 }
+
+func (p *OllamaProvider) Name() string {
+	return "ollama"
+}
+
+func (p *OllamaProvider) Model() string {
+	return p.modelName
+}

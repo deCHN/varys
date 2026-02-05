@@ -16,6 +16,14 @@ func (m *MockProvider) Chat(ctx context.Context, prompt string, options map[stri
 	return m.Response, nil
 }
 
+func (m *MockProvider) Name() string {
+	return "mock"
+}
+
+func (m *MockProvider) Model() string {
+	return "test-model"
+}
+
 func TestAnalyze(t *testing.T) {
 	// 1. Mock LLM Response (Valid JSON)
 	mock := &MockProvider{
