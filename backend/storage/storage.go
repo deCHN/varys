@@ -25,6 +25,8 @@ type NoteData struct {
 
 	Language string
 
+	Description string
+
 	Summary string
 
 	KeyPoints []string
@@ -142,6 +144,12 @@ tags:
 ---
 
 # {{.Title}}
+
+{{if .Description}}
+## 视频简介
+
+{{.Description}}
+{{end}}
 
 ## 智能摘要
 

@@ -36,6 +36,24 @@ func (d *Downloader) GetVideoTitle(url string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// GetVideoDescription fetches the description of the video
+func (d *Downloader) GetVideoDescription(url string) (string, error) {
+	ytPath := d.dep.GetBinaryPath("yt-dlp")
+	if ytPath == "" {
+		return "", fmt.Errorf("yt-dlp not found")
+	}
+
+	cmd := exec.Command(ytPath, "--get-description", "--cookies-from-browser", "chrome", url)
+	out, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return "", fmt.Errorf("failed to get description: %s", string(exitErr.Stderr))
+		}
+		return "", fmt.Errorf("failed to get description: %w", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 // DownloadMedia downloads the media (audio/video) from the given URL to the output directory.
 // Returns the absolute path to the downloaded file.
 func (d *Downloader) DownloadMedia(url string, outputDir string, audioOnly bool, onProgress func(string)) (string, error) {
