@@ -207,6 +207,14 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 		logFunc(fmt.Sprintf("Title found: %s", videoTitle))
 	}
 
+	// Fetch Description
+	logFunc("Fetching video description...")
+	videoDescription, err := a.downloader.GetVideoDescription(url)
+	if err != nil {
+		logFunc(fmt.Sprintf("Warning: Failed to get description: %v", err))
+		videoDescription = ""
+	}
+
 	// Check Cancel
 	if ctx.Err() != nil {
 		return "", ctx.Err()
@@ -379,6 +387,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 		Title:            safeTitle,
 		URL:              url,
 		Language:         targetLang, // Use target language for note context
+		Description:      videoDescription,
 		Summary:          summary,
 		KeyPoints:        analysis.KeyPoints,
 		Tags:             analysis.Tags,

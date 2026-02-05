@@ -45,6 +45,7 @@ func TestSaveNote(t *testing.T) {
 		Title:        "Test Note",
 		URL:          "http://example.com",
 		Language:     "en",
+		Description:  "This is a video description.",
 		Summary:      "This is a summary.",
 		KeyPoints:    []string{"Point 1", "Point 2"},
 		Tags:         []string{"AI", "Test"},
@@ -73,6 +74,12 @@ func TestSaveNote(t *testing.T) {
 	// Verify content parts
 	if !strings.Contains(content, "# Test Note") {
 		t.Error("Title not found in markdown")
+	}
+	if !strings.Contains(content, "## 视频简介") {
+		t.Error("Description header not found")
+	}
+	if !strings.Contains(content, "This is a video description.") {
+		t.Error("Description content not found")
 	}
 	if !strings.Contains(content, "This is a summary.") {
 		t.Error("Summary not found")
