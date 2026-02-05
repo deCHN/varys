@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, CheckDependencies, GetOllamaModels, GetConfigPath, GetAppVersion } from "../wailsjs/go/main/App";
+import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, CheckDependencies, GetAIModels, GetConfigPath, GetAppVersion } from "../wailsjs/go/main/App";
 
 interface Config {
     vault_path: string;
@@ -28,7 +28,7 @@ export default function Settings() {
         openai_key: ''
     });
     const [deps, setDeps] = useState<any>({});
-    const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+    const [aiModels, setAIModels] = useState<string[]>([]);
     const [configPath, setConfigPath] = useState<string>('');
     const [version, setVersion] = useState<string>('');
     const [status, setStatus] = useState<{msg: string, type: 'success' | 'error' | ''}>({msg: '', type: ''});
@@ -69,10 +69,25 @@ Format: Return ONLY a valid JSON object with the following structure:
     useEffect(() => {
         GetConfig().then((c: any) => setCfg(c));
         CheckDependencies().then(setDeps);
-        GetOllamaModels().then(setOllamaModels).catch(err => console.error("Failed to fetch models", err));
         GetConfigPath().then(setConfigPath);
         GetAppVersion().then(setVersion);
     }, []);
+
+    useEffect(() => {
+        if (cfg.ai_provider) {
+            // Only fetch if key is present for openai
+            if (cfg.ai_provider === 'openai' && !cfg.openai_key) {
+                setAIModels([]);
+                return;
+            }
+            GetAIModels(cfg.ai_provider, cfg.openai_key)
+                .then(setAIModels)
+                .catch(err => {
+                    console.error("Failed to fetch models", err);
+                    setAIModels([]);
+                });
+        }
+    }, [cfg.ai_provider, cfg.openai_key]);
 
     const save = () => {
         setStatus({msg: 'Saving...', type: ''});
@@ -159,17 +174,9 @@ Format: Return ONLY a valid JSON object with the following structure:
                         </select>
                     </div>
 
-                    {cfg.ai_provider === 'openai' ? (
+                    {cfg.ai_provider === 'openai' && (
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">OpenAI Model</label>
-                            <input
-                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                                value={cfg.openai_model || 'gpt-4o'}
-                                onChange={e => setCfg({...cfg, openai_model: e.target.value})}
-                                placeholder="gpt-4o"
-                            />
-                            
-                            <label className="block text-sm font-medium text-slate-400 mt-4 mb-2 flex justify-between">
+                            <label className="block text-sm font-medium text-slate-400 mb-2 flex justify-between">
                                 <span>API Key</span>
                                 <span className={`text-xs ${cfg.openai_key && cfg.openai_key.length > 20 ? 'text-green-400' : 'text-slate-500'}`}>
                                     {cfg.openai_key ? `Length: ${cfg.openai_key.length}` : 'Not Set'}
@@ -186,28 +193,42 @@ Format: Return ONLY a valid JSON object with the following structure:
                                 Your API Key is stored locally in <code>config.json</code>.
                             </p>
                         </div>
-                    ) : (
-                        <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">Ollama Model</label>
-                            {ollamaModels.length > 0 ? (
-                                <select
-                                    className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none"
-                                    value={cfg.llm_model}
-                                    onChange={e => setCfg({...cfg, llm_model: e.target.value})}
-                                >
-                                    <option value="" disabled>Select a model...</option>
-                                    {ollamaModels.map(m => <option key={m} value={m}>{m}</option>)}
-                                </select>
-                            ) : (
-                                <input
-                                    className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                                    value={cfg.llm_model}
-                                    onChange={e => setCfg({...cfg, llm_model: e.target.value})}
-                                    placeholder="Type model name (e.g. qwen2.5:7b)"
-                                />
-                            )}
-                        </div>
                     )}
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-2">
+                            {cfg.ai_provider === 'openai' ? 'OpenAI Model' : 'Ollama Model'}
+                        </label>
+                        {aiModels.length > 0 ? (
+                            <select
+                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none"
+                                value={cfg.ai_provider === 'openai' ? cfg.openai_model : cfg.llm_model}
+                                onChange={e => {
+                                    if (cfg.ai_provider === 'openai') {
+                                        setCfg({...cfg, openai_model: e.target.value});
+                                    } else {
+                                        setCfg({...cfg, llm_model: e.target.value});
+                                    }
+                                }}
+                            >
+                                <option value="" disabled>Select a model...</option>
+                                {aiModels.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                        ) : (
+                            <input
+                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                value={cfg.ai_provider === 'openai' ? cfg.openai_model : cfg.llm_model}
+                                onChange={e => {
+                                    if (cfg.ai_provider === 'openai') {
+                                        setCfg({...cfg, openai_model: e.target.value});
+                                    } else {
+                                        setCfg({...cfg, llm_model: e.target.value});
+                                    }
+                                }}
+                                placeholder={cfg.ai_provider === 'openai' ? "e.g. gpt-4o" : "e.g. qwen3:8b"}
+                            />
+                        )}
+                    </div>
 
                     <div>
                         <label className="block text-sm font-medium text-slate-400 mb-2">Target Language</label>

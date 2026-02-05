@@ -98,5 +98,73 @@ func (p *OllamaProvider) Name() string {
 }
 
 func (p *OllamaProvider) Model() string {
+
 	return p.modelName
+
+}
+
+
+
+func (p *OllamaProvider) ListModels(ctx context.Context) ([]string, error) {
+
+	tagsURL := strings.Replace(p.apiURL, "/api/generate", "/api/tags", 1)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", tagsURL, nil)
+
+	if err != nil {
+
+		return nil, err
+
+	}
+
+
+
+	resp, err := http.DefaultClient.Do(req)
+
+	if err != nil {
+
+		return nil, fmt.Errorf("failed to connect to ollama: %w", err)
+
+	}
+
+	defer resp.Body.Close()
+
+
+
+	if resp.StatusCode != http.StatusOK {
+
+		return nil, fmt.Errorf("ollama returned status %d", resp.StatusCode)
+
+	}
+
+
+
+	var data struct {
+
+		Models []struct {
+
+			Name string `json:"name"`
+
+		} `json:"models"`
+
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+
+		return nil, err
+
+	}
+
+
+
+	var names []string
+
+	for _, m := range data.Models {
+
+		names = append(names, m.Name)
+
+	}
+
+	return names, nil
+
 }

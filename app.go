@@ -521,29 +521,8 @@ func (a *App) UpdateConfig(cfg config.Config) error {
 	return a.cfgManager.Save(&cfg)
 }
 
-type OllamaModel struct {
-	Name string `json:"name"`
-}
-type OllamaTagsResponse struct {
-	Models []OllamaModel `json:"models"`
-}
-
-// GetOllamaModels fetches available models from local Ollama instance
-func (a *App) GetOllamaModels() ([]string, error) {
-	resp, err := http.Get("http://localhost:11434/api/tags")
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to ollama: %w", err)
-	}
-	defer resp.Body.Close()
-
-	var data OllamaTagsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, err
-	}
-
-	var names []string
-	for _, m := range data.Models {
-		names = append(names, m.Name)
-	}
-	return names, nil
+// GetAIModels fetches available models from the selected AI provider
+func (a *App) GetAIModels(providerType, apiKey string) ([]string, error) {
+	an := analyzer.NewAnalyzer(providerType, apiKey, "")
+	return an.ListModels(a.ctx)
 }

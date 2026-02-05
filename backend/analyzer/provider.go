@@ -11,4 +11,6 @@ type LLMProvider interface {
 	Name() string
 	// Model returns the model name being used
 	Model() string
+	// ListModels returns a list of available models from the provider
+	ListModels(ctx context.Context) ([]string, error)
 }

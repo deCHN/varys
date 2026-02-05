@@ -88,5 +88,47 @@ func (p *OpenAIProvider) Name() string {
 }
 
 func (p *OpenAIProvider) Model() string {
+
 	return p.model
+
+}
+
+
+
+func (p *OpenAIProvider) ListModels(ctx context.Context) ([]string, error) {
+
+	if p.client == nil {
+
+		return nil, errors.New("openai client not initialized")
+
+	}
+
+
+
+	models, err := p.client.ListModels(ctx)
+
+	if err != nil {
+
+		return nil, fmt.Errorf("failed to list models: %w", err)
+
+	}
+
+
+
+	var names []string
+
+	for _, m := range models.Models {
+
+		// Filter for chat models to keep the list clean (gpt-... or o1-...)
+
+		if strings.HasPrefix(m.ID, "gpt-") || strings.HasPrefix(m.ID, "o1-") {
+
+			names = append(names, m.ID)
+
+		}
+
+	}
+
+	return names, nil
+
 }

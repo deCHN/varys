@@ -84,3 +84,7 @@ func (a *Analyzer) Analyze(ctx context.Context, text string, customPrompt string
 
 	return &analysis, nil
 }
+
+func (a *Analyzer) ListModels(ctx context.Context) ([]string, error) {
+	return a.provider.ListModels(ctx)
+}
