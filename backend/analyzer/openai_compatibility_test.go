@@ -25,8 +25,26 @@ func TestOpenAIModelCompatibility(t *testing.T) {
 	}
 
 	var chatModels []string
+	// 预定义的黑名单，这些模型已知不支持标准 Chat API 或需要特殊参数
+	blacklist := []string{
+		"realtime", "audio", "image", "tts", "search", 
+		"transcribe", "pro", "codex", "instruct", "vision",
+	}
+
 	for _, m := range allModels {
-		if strings.HasPrefix(m, "gpt-") || strings.HasPrefix(m, "o1-") {
+		if !strings.HasPrefix(m, "gpt-") && !strings.HasPrefix(m, "o1-") {
+			continue
+		}
+
+		isBlacklisted := false
+		for _, b := range blacklist {
+			if strings.Contains(strings.ToLower(m), b) {
+				isBlacklisted = true
+				break
+			}
+		}
+
+		if !isBlacklisted {
 			chatModels = append(chatModels, m)
 		}
 	}
@@ -38,11 +56,14 @@ func TestOpenAIModelCompatibility(t *testing.T) {
 	successCount := 0
 	maxSuccess := 3
 
+	t.Logf("预过滤后的候选模型列表: %v", chatModels)
+
 	for _, model := range chatModels {
 		if successCount >= maxSuccess {
 			break
 		}
 
+		// 只有通过过滤的模型才会执行 t.Run，即才会发送网络请求
 		t.Run(model, func(t *testing.T) {
 			an := analyzer.NewAnalyzer("openai", apiKey, model)
 			text := "Say 'OK'."
@@ -55,10 +76,10 @@ func TestOpenAIModelCompatibility(t *testing.T) {
 			duration := time.Since(start)
 
 			if err != nil {
-				// 如果是由于不支持的接口（404/400）导致，我们记录并继续
-				t.Logf("[-] %-25s | SKIP | %v", model, err)
+				// 如果依然报错（例如某些新模型），记录错误但不计入成功数
+				t.Logf("[FAIL] %-25s | %v", model, err)
 			} else {
-				t.Logf("[+] %-25s | PASS | %v", model, duration)
+				t.Logf("[PASS] %-25s | %v", model, duration)
 				successCount++
 			}
 		})
