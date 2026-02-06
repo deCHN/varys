@@ -20,12 +20,10 @@ func NewOpenAIProvider(apiKey, model string) *OpenAIProvider {
 	if model == "" {
 		model = "gpt-4o"
 	}
-	
 	config := openai.DefaultConfig(apiKey)
 	if baseURL := os.Getenv("OPENAI_BASE_URL"); baseURL != "" {
 		config.BaseURL = baseURL
 	}
-	
 	client := openai.NewClientWithConfig(config)
 	return &OpenAIProvider{
 		client: client,
@@ -37,7 +35,6 @@ func (p *OpenAIProvider) Chat(ctx context.Context, prompt string, options map[st
 	if p.client == nil {
 		return "", errors.New("openai client not initialized")
 	}
-
 	req := openai.ChatCompletionRequest{
 		Model: p.model,
 		Messages: []openai.ChatCompletionMessage{
@@ -48,10 +45,8 @@ func (p *OpenAIProvider) Chat(ctx context.Context, prompt string, options map[st
 		},
 		Stream: true,
 	}
-
 	// Skip setting temperature for reasoning models (o1-*, gpt-5*) as they have fixed params
 	isReasoningModel := strings.HasPrefix(p.model, "o1-") || strings.HasPrefix(p.model, "gpt-5")
-
 	if !isReasoningModel {
 		if val, ok := options["temperature"]; ok {
 			if t, ok := val.(float64); ok {
@@ -61,13 +56,11 @@ func (p *OpenAIProvider) Chat(ctx context.Context, prompt string, options map[st
 			}
 		}
 	}
-
 	stream, err := p.client.CreateChatCompletionStream(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("openai stream error: %w", err)
 	}
 	defer stream.Close()
-
 	var fullResponse strings.Builder
 	for {
 		response, err := stream.Recv()
@@ -77,14 +70,12 @@ func (p *OpenAIProvider) Chat(ctx context.Context, prompt string, options map[st
 		if err != nil {
 			return "", fmt.Errorf("stream recv error: %w", err)
 		}
-
 		content := response.Choices[0].Delta.Content
 		fullResponse.WriteString(content)
 		if streamCallback != nil {
 			streamCallback(content)
 		}
 	}
-
 	return fullResponse.String(), nil
 }
 
@@ -93,47 +84,23 @@ func (p *OpenAIProvider) Name() string {
 }
 
 func (p *OpenAIProvider) Model() string {
-
 	return p.model
-
 }
 
-
-
 func (p *OpenAIProvider) ListModels(ctx context.Context) ([]string, error) {
-
 	if p.client == nil {
-
 		return nil, errors.New("openai client not initialized")
-
 	}
-
-
-
 	models, err := p.client.ListModels(ctx)
-
 	if err != nil {
-
 		return nil, fmt.Errorf("failed to list models: %w", err)
-
 	}
-
-
-
 	var names []string
-
 	for _, m := range models.Models {
-
 		// Filter for chat models to keep the list clean (gpt-... or o1-...)
-
 		if strings.HasPrefix(m.ID, "gpt-") || strings.HasPrefix(m.ID, "o1-") {
-
 			names = append(names, m.ID)
-
 		}
-
 	}
-
 	return names, nil
-
 }

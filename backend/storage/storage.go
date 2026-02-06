@@ -2,52 +2,32 @@ package storage
 
 import (
 	"io"
-
 	"os"
-
 	"path/filepath"
-
 	"regexp"
-
 	"strings"
-
 	"text/template"
 
 	"Varys/backend/translation"
 )
 
 // NoteData holds the data for the markdown note
-
 type NoteData struct {
-	Title string
-
-	URL string
-
-	Language string
-
-	Description string
-
-	Summary string
-
-	KeyPoints []string
-
-	Tags []string
-
-	Assessment map[string]string
-
-	OriginalText string
-
+	Title            string
+	URL              string
+	Language         string
+	Description      string
+	Summary          string
+	KeyPoints        []string
+	Tags             []string
+	Assessment       map[string]string
+	OriginalText     string
 	TranslationPairs []translation.TranslationPair
-
-	AudioFile string
-
-	CreatedTime string
-
-	AssetsFolder string
-
-	AIProvider string
-
-	AIModel string
+	AudioFile        string
+	CreatedTime      string
+	AssetsFolder     string
+	AIProvider       string
+	AIModel          string
 }
 
 type Manager struct {

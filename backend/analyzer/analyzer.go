@@ -40,7 +40,7 @@ func (a *Analyzer) Analyze(ctx context.Context, text string, customPrompt string
 	if targetLang == "" {
 		targetLang = "Simplified Chinese"
 	}
-	
+
 	var prompt string
 	if customPrompt != "" {
 		prompt = fmt.Sprintf("%s\n\nText to analyze:\n%s", customPrompt, text)

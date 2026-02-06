@@ -11,7 +11,7 @@ import (
 
 func TestIntegrationAnalysis(t *testing.T) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
-	
+
 	tests := []struct {
 		name     string
 		provider string
@@ -34,7 +34,7 @@ func TestIntegrationAnalysis(t *testing.T) {
 			name:     "Ollama Qwen3:8b (Default)",
 			provider: "ollama",
 			model:    "qwen3:8b",
-			skip:     false, 
+			skip:     false,
 		},
 	}
 
@@ -78,7 +78,7 @@ func TestIntegrationAnalysis(t *testing.T) {
 			if len(result.KeyPoints) == 0 {
 				t.Error("KeyPoints are empty")
 			}
-			
+
 			// Verify Provider Metadata
 			if result.Provider != tt.provider {
 				t.Errorf("Expected Provider %s, got %s", tt.provider, result.Provider)
