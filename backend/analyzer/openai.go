@@ -48,12 +48,17 @@ func (p *OpenAIProvider) Chat(ctx context.Context, prompt string, options map[st
 		},
 		Stream: true,
 	}
-    
-	if val, ok := options["temperature"]; ok {
-		if t, ok := val.(float64); ok {
-			req.Temperature = float32(t)
-		} else if t, ok := val.(float32); ok {
-			req.Temperature = t
+
+	// Skip setting temperature for reasoning models (o1-*, gpt-5*) as they have fixed params
+	isReasoningModel := strings.HasPrefix(p.model, "o1-") || strings.HasPrefix(p.model, "gpt-5")
+
+	if !isReasoningModel {
+		if val, ok := options["temperature"]; ok {
+			if t, ok := val.(float64); ok {
+				req.Temperature = float32(t)
+			} else if t, ok := val.(float32); ok {
+				req.Temperature = t
+			}
 		}
 	}
 

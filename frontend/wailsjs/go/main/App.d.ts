@@ -7,13 +7,13 @@ export function CancelTask():Promise<void>;
 
 export function CheckDependencies():Promise<main.DependencyStatus>;
 
+export function GetAIModels(arg1:string,arg2:string):Promise<Array<string>>;
+
 export function GetAppVersion():Promise<string>;
 
 export function GetConfig():Promise<config.Config>;
 
 export function GetConfigPath():Promise<string>;
-
-export function GetOllamaModels():Promise<Array<string>>;
 
 export function SelectModelPath():Promise<string>;
 

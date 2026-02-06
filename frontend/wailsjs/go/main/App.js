@@ -10,6 +10,10 @@ export function CheckDependencies() {
   return window['go']['main']['App']['CheckDependencies']();
 }
 
+export function GetAIModels(arg1, arg2) {
+  return window['go']['main']['App']['GetAIModels'](arg1, arg2);
+}
+
 export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }
@@ -20,10 +24,6 @@ export function GetConfig() {
 
 export function GetConfigPath() {
   return window['go']['main']['App']['GetConfigPath']();
-}
-
-export function GetOllamaModels() {
-  return window['go']['main']['App']['GetOllamaModels']();
 }
 
 export function SelectModelPath() {

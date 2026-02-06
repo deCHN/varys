@@ -54,18 +54,20 @@ func TestIntegrationAnalysis(t *testing.T) {
 			an := analyzer.NewAnalyzer(tt.provider, key, tt.model)
 
 			// Timeout
-			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 
-			t.Logf("Sending request to %s (%s)...", tt.provider, tt.model)
+			t.Logf("[START] Provider: %s, Model: %s", tt.provider, tt.model)
+			start := time.Now()
 			result, err := an.Analyze(ctx, text, "", "English", 4096, nil)
+			duration := time.Since(start)
 
 			if err != nil {
 				if tt.provider == "ollama" {
-					t.Logf("Ollama analysis failed: %v", err)
+					t.Logf("[SKIP] Ollama analysis failed/timed out after %v: %v", duration, err)
 					t.Skip("Skipping Ollama test (Ensure Ollama is running and model is pulled)")
 				} else {
-					t.Fatalf("Analyze failed: %v", err)
+					t.Fatalf("[FAIL] %s Analyze failed after %v: %v", tt.name, duration, err)
 				}
 			}
 
@@ -85,7 +87,7 @@ func TestIntegrationAnalysis(t *testing.T) {
 				t.Errorf("Expected Model %s, got %s", tt.model, result.Model)
 			}
 
-			t.Logf("Result: %+v", result)
+			t.Logf("[DONE] %s finished in %v", tt.name, duration)
 		})
 	}
 }

@@ -24,6 +24,10 @@ func (m *MockProvider) Model() string {
 	return "test-model"
 }
 
+func (m *MockProvider) ListModels(ctx context.Context) ([]string, error) {
+	return []string{"test-model"}, nil
+}
+
 func TestAnalyze(t *testing.T) {
 	// 1. Mock LLM Response (Valid JSON)
 	mock := &MockProvider{

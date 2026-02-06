@@ -87,7 +87,7 @@ test-backend: test-unit ## Alias for test-unit
 .PHONY: test-unit
 test-unit: ## Run Go unit tests (excludes benchmarks)
 	@echo "Running Unit Tests..."
-	cd $(PROJECT_DIR) && $(GO) test -v $$(go list ./backend/... | grep -v benchmarks)
+	cd $(PROJECT_DIR) && $(GO) test -v -timeout 20s $$(go list ./backend/... | grep -v benchmarks)
 
 .PHONY: test-benchmark
 test-benchmark: ## Run Go performance benchmarks
