@@ -87,3 +87,13 @@ func (m *Manager) Save(cfg *Config) error {
 func (m *Manager) GetConfigPath() string {
 	return m.configPath
 }
+
+func (c *Config) Validate() error {
+	if c.VaultPath == "" {
+		return fmt.Errorf("obsidian vault path is required")
+	}
+	if c.AIProvider == "openai" && c.OpenAIKey == "" {
+		return fmt.Errorf("openai api key is required when openai provider is selected")
+	}
+	return nil
+}

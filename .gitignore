@@ -6,3 +6,4 @@ node_modules
 res/
 Varys
 \n.debug
+.DS_Store

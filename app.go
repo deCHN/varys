@@ -10,6 +10,7 @@ import (
 	"Varys/backend/translation"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -204,22 +205,38 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	// Load latest config
 	cfg, _ := a.cfgManager.Load()
 
-	// 0. Get Title
-	logFunc("Fetching video title...")
-	videoTitle, err := a.downloader.GetVideoTitle(url)
-	if err != nil {
-		videoTitle = "Task_" + time.Now().Format("20060102_150405")
-		logFunc(fmt.Sprintf("Warning: Failed to get title (%v), using fallback: %s", err, videoTitle))
-	} else {
-		logFunc(fmt.Sprintf("Title found: %s", videoTitle))
+	// Check if URL is actually a local file
+	isLocalFile := false
+	if info, err := os.Stat(url); err == nil && !info.IsDir() {
+		isLocalFile = true
+		runtime.LogInfo(a.ctx, "Local file detected: "+url)
 	}
 
-	// Fetch Description
-	logFunc("Fetching video description...")
-	videoDescription, err := a.downloader.GetVideoDescription(url)
-	if err != nil {
-		logFunc(fmt.Sprintf("Warning: Failed to get description: %v", err))
-		videoDescription = ""
+	// 0. Get Title
+	var videoTitle string
+	var videoDescription string
+	if isLocalFile {
+		videoTitle = strings.TrimSuffix(filepath.Base(url), filepath.Ext(url))
+		videoDescription = "Local file: " + url
+		logFunc(fmt.Sprintf("Local file detected, using filename as title: %s", videoTitle))
+	} else {
+		logFunc("Fetching video title...")
+		var err error
+		videoTitle, err = a.downloader.GetVideoTitle(url)
+		if err != nil {
+			videoTitle = "Task_" + time.Now().Format("20060102_150405")
+			logFunc(fmt.Sprintf("Warning: Failed to get title (%v), using fallback: %s", err, videoTitle))
+		} else {
+			logFunc(fmt.Sprintf("Title found: %s", videoTitle))
+		}
+
+		// Fetch Description
+		logFunc("Fetching video description...")
+		videoDescription, err = a.downloader.GetVideoDescription(url)
+		if err != nil {
+			logFunc(fmt.Sprintf("Warning: Failed to get description: %v", err))
+			videoDescription = ""
+		}
 	}
 
 	// Check Cancel
@@ -228,20 +245,44 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	}
 
 	// 1. Download
-	logFunc(fmt.Sprintf("Downloading media from %s...", url))
-	mediaPath, err := a.downloader.DownloadMedia(url, tempDir, audioOnly, func(msg string) {
-		if ctx.Err() == nil {
-			logFunc("[DL] " + msg)
+	var mediaPath string
+	if isLocalFile {
+		logFunc(fmt.Sprintf("Copying local file to temporary directory..."))
+		destPath := filepath.Join(tempDir, filepath.Base(url))
+
+		src, err := os.Open(url)
+		if err != nil {
+			return "", fmt.Errorf("failed to open local file: %w", err)
 		}
-	})
-	if err != nil {
-		// If context cancelled, err might be from downloader or our check
-		if ctx.Err() != nil {
-			return "", ctx.Err()
+		defer src.Close()
+
+		dst, err := os.Create(destPath)
+		if err != nil {
+			return "", fmt.Errorf("failed to create temp file: %w", err)
 		}
-		return "", fmt.Errorf("download failed: %w", err)
+		defer dst.Close()
+
+		if _, err = io.Copy(dst, src); err != nil {
+			return "", fmt.Errorf("failed to copy local file: %w", err)
+		}
+		mediaPath = destPath
+	} else {
+		logFunc(fmt.Sprintf("Downloading media from %s...", url))
+		var err error
+		mediaPath, err = a.downloader.DownloadMedia(url, tempDir, audioOnly, func(msg string) {
+			if ctx.Err() == nil {
+				logFunc("[DL] " + msg)
+			}
+		})
+		if err != nil {
+			// If context cancelled, err might be from downloader or our check
+			if ctx.Err() != nil {
+				return "", ctx.Err()
+			}
+			return "", fmt.Errorf("download failed: %w", err)
+		}
 	}
-	logFunc(fmt.Sprintf("Download complete: %s", mediaPath))
+	logFunc(fmt.Sprintf("Media ready: %s", mediaPath))
 
 	// Check Cancel
 	if ctx.Err() != nil {
@@ -515,6 +556,9 @@ func (a *App) SelectModelPath() (string, error) {
 func (a *App) UpdateConfig(cfg config.Config) error {
 	if a.cfgManager == nil {
 		return fmt.Errorf("config manager not initialized")
+	}
+	if err := cfg.Validate(); err != nil {
+		return err
 	}
 	return a.cfgManager.Save(&cfg)
 }
