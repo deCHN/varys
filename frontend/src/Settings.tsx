@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics } from "../wailsjs/go/main/App";
 import { main } from "../wailsjs/go/models";
+import HealthStatusBadge from "./components/health/HealthStatusBadge";
+import HealthItemRow from "./components/health/HealthItemRow";
 
 interface Config {
     vault_path: string;
@@ -148,12 +150,6 @@ Format: Return ONLY a valid JSON object with the following structure:
 
     const resetPrompt = () => {
         setCfg({...cfg, custom_prompt: ''});
-    };
-
-    const statusBadgeClass = (status: string) => {
-        if (status === 'ok') return 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30';
-        if (status === 'missing') return 'text-red-300 bg-red-500/10 border-red-500/30';
-        return 'text-amber-300 bg-amber-500/10 border-amber-500/30';
     };
 
     return (
@@ -336,13 +332,10 @@ Format: Return ONLY a valid JSON object with the following structure:
                 <div className="bg-slate-800/30 border border-slate-800 rounded-lg p-4 mb-4">
                     <div className="flex items-center justify-between">
                         <span className="text-sm text-slate-300">Overall Status</span>
-                        <span className={`text-xs px-2 py-1 rounded-md border ${
-                            diagnostics?.ready
-                                ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30'
-                                : 'text-amber-300 bg-amber-500/10 border-amber-500/30'
-                        }`}>
-                            {diagnostics?.ready ? 'READY' : `BLOCKED (${diagnostics?.blockers?.length ?? 0})`}
-                        </span>
+                        <HealthStatusBadge
+                            status={diagnostics?.ready ? "ok" : "misconfigured"}
+                            isBlocker={!diagnostics?.ready}
+                        />
                     </div>
                     <div className="mt-2 text-xs text-slate-500">
                         Last checked: {diagnostics?.generated_at || 'Not checked yet'}
@@ -350,20 +343,7 @@ Format: Return ONLY a valid JSON object with the following structure:
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 text-sm">
-                    {(diagnostics?.items || []).map((item) => (
-                        <div key={item.id} className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                                <div className="text-slate-300 truncate">{item.name}</div>
-                                <div className="text-xs text-slate-500 truncate">
-                                    ID: {item.id}
-                                    {item.is_blocker ? ' · blocker' : ''}
-                                </div>
-                            </div>
-                            <span className={`text-xs px-2 py-1 rounded-md border ${statusBadgeClass(item.status)}`}>
-                                {item.status.toUpperCase()}
-                            </span>
-                        </div>
-                    ))}
+                    {(diagnostics?.items || []).map((item) => <HealthItemRow key={item.id} item={item} />)}
                 </div>
             </div>
 

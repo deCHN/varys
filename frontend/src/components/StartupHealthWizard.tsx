@@ -1,5 +1,6 @@
 import { main } from "../../wailsjs/go/models";
 import { useEffect, useState } from "react";
+import HealthStatusBadge from "./health/HealthStatusBadge";
 
 interface StartupHealthWizardProps {
     diagnostics: main.StartupDiagnostics | null;
@@ -13,16 +14,6 @@ interface StartupHealthWizardProps {
     onBrowseVaultPath: () => Promise<void>;
     onBrowseModelPath: () => Promise<void>;
     onPasteOpenAIKey: (key?: string) => Promise<string>;
-}
-
-function statusClass(status: string): string {
-    if (status === "ok") {
-        return "text-emerald-400 bg-emerald-500/10 border-emerald-500/30";
-    }
-    if (status === "missing") {
-        return "text-red-400 bg-red-500/10 border-red-500/30";
-    }
-    return "text-amber-400 bg-amber-500/10 border-amber-500/30";
 }
 
 async function copyToClipboard(text: string): Promise<void> {
@@ -125,10 +116,7 @@ export default function StartupHealthWizard(props: StartupHealthWizardProps) {
                                     <div className="text-slate-100 font-medium">{item.name}</div>
                                     <div className="text-xs text-slate-500 mt-1">ID: {item.id}</div>
                                 </div>
-                                <div className={`text-xs px-2 py-1 border rounded-md ${statusClass(item.status)}`}>
-                                    {item.status.toUpperCase()}
-                                    {item.is_blocker ? " · BLOCKER" : ""}
-                                </div>
+                                <HealthStatusBadge status={item.status} isBlocker={item.is_blocker} />
                             </div>
 
                             {item.status === "ok" ? null : (
