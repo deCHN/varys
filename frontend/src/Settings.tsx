@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, CheckDependencies, GetAIModels, GetConfigPath, GetAppVersion } from "../wailsjs/go/main/App";
 
 interface Config {
@@ -14,7 +14,12 @@ interface Config {
     openai_key: string;
 }
 
-export default function Settings() {
+interface SettingsProps {
+    isActive?: boolean;
+    onOpenDependencyHealth?: () => Promise<void> | void;
+}
+
+export default function Settings(props: SettingsProps) {
     const [cfg, setCfg] = useState<Config>({ 
         vault_path: '', 
         model_path: '', 
@@ -32,6 +37,7 @@ export default function Settings() {
     const [configPath, setConfigPath] = useState<string>('');
     const [version, setVersion] = useState<string>('');
     const [status, setStatus] = useState<{msg: string, type: 'success' | 'error' | ''}>({msg: '', type: ''});
+    const systemCheckRef = useRef<HTMLDivElement>(null);
 
     const defaultPrompt = `You are an expert content analyst.
 Task: Analyze the following text and provide a structured analysis in [Target Language].
@@ -66,11 +72,35 @@ Format: Return ONLY a valid JSON object with the following structure:
         "Russian"
     ];
 
+    const refreshSystemCheck = () => {
+        CheckDependencies().then(setDeps);
+    };
+
     useEffect(() => {
         GetConfig().then((c: any) => setCfg(c));
-        CheckDependencies().then(setDeps);
+        refreshSystemCheck();
         GetConfigPath().then(setConfigPath);
         GetAppVersion().then(setVersion);
+    }, []);
+
+    useEffect(() => {
+        if (props.isActive) {
+            refreshSystemCheck();
+        }
+    }, [props.isActive]);
+
+    useEffect(() => {
+        const onOpenSystemCheck = () => {
+            refreshSystemCheck();
+            setTimeout(() => {
+                systemCheckRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+        };
+
+        window.addEventListener('open-system-check', onOpenSystemCheck as EventListener);
+        return () => {
+            window.removeEventListener('open-system-check', onOpenSystemCheck as EventListener);
+        };
     }, []);
 
     useEffect(() => {
@@ -278,8 +308,19 @@ Format: Return ONLY a valid JSON object with the following structure:
                 </div>
             </div>
 
-            <div className="mb-10">
-                <h3 className="text-lg font-semibold text-slate-200 mb-6 border-b border-slate-800 pb-2">System Check</h3>
+            <div className="mb-10" ref={systemCheckRef}>
+                <div className="flex items-center justify-between mb-6 border-b border-slate-800 pb-2">
+                    <h3 className="text-lg font-semibold text-slate-200">System Check</h3>
+                    <button
+                        className="px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-xs text-slate-100 border border-slate-600"
+                        onClick={async () => {
+                            refreshSystemCheck();
+                            await props.onOpenDependencyHealth?.();
+                        }}
+                    >
+                        Re-check
+                    </button>
+                </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
                         <span className="text-slate-400">yt-dlp</span> <StatusIcon ok={deps.yt_dlp} />
