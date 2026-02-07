@@ -26,6 +26,18 @@ export function GetConfigPath() {
   return window['go']['main']['App']['GetConfigPath']();
 }
 
+export function GetStartupDiagnostics() {
+  return window['go']['main']['App']['GetStartupDiagnostics']();
+}
+
+export function OpenOllamaModelLibrary() {
+  return window['go']['main']['App']['OpenOllamaModelLibrary']();
+}
+
+export function ReadClipboardText() {
+  return window['go']['main']['App']['ReadClipboardText']();
+}
+
 export function SelectModelPath() {
   return window['go']['main']['App']['SelectModelPath']();
 }
@@ -34,10 +46,30 @@ export function SelectVaultPath() {
   return window['go']['main']['App']['SelectVaultPath']();
 }
 
+export function StartOllamaService() {
+  return window['go']['main']['App']['StartOllamaService']();
+}
+
+export function StopOllamaService() {
+  return window['go']['main']['App']['StopOllamaService']();
+}
+
 export function SubmitTask(arg1, arg2) {
   return window['go']['main']['App']['SubmitTask'](arg1, arg2);
 }
 
 export function UpdateConfig(arg1) {
   return window['go']['main']['App']['UpdateConfig'](arg1);
+}
+
+export function UpdateModelPath(arg1) {
+  return window['go']['main']['App']['UpdateModelPath'](arg1);
+}
+
+export function UpdateOpenAIKey(arg1) {
+  return window['go']['main']['App']['UpdateOpenAIKey'](arg1);
+}
+
+export function UpdateVaultPath(arg1) {
+  return window['go']['main']['App']['UpdateVaultPath'](arg1);
 }

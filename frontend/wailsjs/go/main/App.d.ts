@@ -15,10 +15,26 @@ export function GetConfig():Promise<config.Config>;
 
 export function GetConfigPath():Promise<string>;
 
+export function GetStartupDiagnostics():Promise<main.StartupDiagnostics>;
+
+export function OpenOllamaModelLibrary():Promise<string>;
+
+export function ReadClipboardText():Promise<string>;
+
 export function SelectModelPath():Promise<string>;
 
 export function SelectVaultPath():Promise<string>;
 
+export function StartOllamaService():Promise<string>;
+
+export function StopOllamaService():Promise<string>;
+
 export function SubmitTask(arg1:string,arg2:boolean):Promise<string>;
 
 export function UpdateConfig(arg1:config.Config):Promise<void>;
+
+export function UpdateModelPath(arg1:string):Promise<void>;
+
+export function UpdateOpenAIKey(arg1:string):Promise<void>;
+
+export function UpdateVaultPath(arg1:string):Promise<void>;
