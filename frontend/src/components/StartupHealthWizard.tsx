@@ -90,8 +90,9 @@ export default function StartupHealthWizard(props: StartupHealthWizardProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-slate-900 border border-slate-700 rounded-xl shadow-2xl">
+        <div className="fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-black/45" onClick={onClose}></div>
+            <aside className="absolute right-0 top-0 h-full w-full max-w-xl bg-slate-900 border-l border-slate-700 shadow-2xl flex flex-col">
                 <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
                     <div>
                         <h2 className="text-xl font-semibold text-slate-100">Startup Dependency Health</h2>
@@ -108,7 +109,7 @@ export default function StartupHealthWizard(props: StartupHealthWizardProps) {
                     </button>
                 </div>
 
-                <div className="p-6 space-y-4 overflow-y-auto max-h-[68vh]">
+                <div className="p-6 space-y-4 overflow-y-auto flex-1">
                     {diagnostics.items.map((item) => (
                         <div key={item.id} className="border border-slate-800 rounded-lg p-4 bg-slate-900/60">
                             <div className="flex items-center justify-between gap-3">
@@ -238,7 +239,7 @@ export default function StartupHealthWizard(props: StartupHealthWizardProps) {
                         Re-check
                     </button>
                 </div>
-            </div>
+            </aside>
         </div>
     );
 }
