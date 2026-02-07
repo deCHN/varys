@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, CheckDependencies, GetAIModels, GetConfigPath, GetAppVersion } from "../wailsjs/go/main/App";
+import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics } from "../wailsjs/go/main/App";
+import { main } from "../wailsjs/go/models";
 
 interface Config {
     vault_path: string;
@@ -32,7 +33,7 @@ export default function Settings(props: SettingsProps) {
         openai_model: 'gpt-4o',
         openai_key: ''
     });
-    const [deps, setDeps] = useState<any>({});
+    const [diagnostics, setDiagnostics] = useState<main.StartupDiagnostics | null>(null);
     const [aiModels, setAIModels] = useState<string[]>([]);
     const [configPath, setConfigPath] = useState<string>('');
     const [version, setVersion] = useState<string>('');
@@ -72,26 +73,30 @@ Format: Return ONLY a valid JSON object with the following structure:
         "Russian"
     ];
 
-    const refreshSystemCheck = () => {
-        CheckDependencies().then(setDeps);
+    const refreshDiagnostics = () => {
+        GetStartupDiagnostics()
+            .then(setDiagnostics)
+            .catch(err => {
+                console.error("Failed to load startup diagnostics", err);
+            });
     };
 
     useEffect(() => {
         GetConfig().then((c: any) => setCfg(c));
-        refreshSystemCheck();
+        refreshDiagnostics();
         GetConfigPath().then(setConfigPath);
         GetAppVersion().then(setVersion);
     }, []);
 
     useEffect(() => {
         if (props.isActive) {
-            refreshSystemCheck();
+            refreshDiagnostics();
         }
     }, [props.isActive]);
 
     useEffect(() => {
         const onOpenSystemCheck = () => {
-            refreshSystemCheck();
+            refreshDiagnostics();
             setTimeout(() => {
                 systemCheckRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 50);
@@ -145,11 +150,11 @@ Format: Return ONLY a valid JSON object with the following structure:
         setCfg({...cfg, custom_prompt: ''});
     };
 
-    const StatusIcon = ({ ok }: { ok: boolean }) => (
-        <span className={`ml-2 text-xs font-bold ${ok ? 'text-green-400' : 'text-red-400'}`}>
-            {ok ? "OK" : "MISSING"}
-        </span>
-    );
+    const statusBadgeClass = (status: string) => {
+        if (status === 'ok') return 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30';
+        if (status === 'missing') return 'text-red-300 bg-red-500/10 border-red-500/30';
+        return 'text-amber-300 bg-amber-500/10 border-amber-500/30';
+    };
 
     return (
         <div className="max-w-2xl mx-auto p-8 w-full">
@@ -310,30 +315,55 @@ Format: Return ONLY a valid JSON object with the following structure:
 
             <div className="mb-10" ref={systemCheckRef}>
                 <div className="flex items-center justify-between mb-6 border-b border-slate-800 pb-2">
-                    <h3 className="text-lg font-semibold text-slate-200">System Check</h3>
-                    <button
-                        className="px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-xs text-slate-100 border border-slate-600"
-                        onClick={async () => {
-                            refreshSystemCheck();
-                            await props.onOpenDependencyHealth?.();
-                        }}
-                    >
-                        Re-check
-                    </button>
+                    <h3 className="text-lg font-semibold text-slate-200">Dependency Health</h3>
+                    <div className="flex items-center gap-2">
+                        <button
+                            className="px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-xs text-slate-100 border border-slate-600"
+                            onClick={refreshDiagnostics}
+                        >
+                            Re-check
+                        </button>
+                        <button
+                            className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-xs text-white border border-blue-500/40"
+                            onClick={async () => {
+                                await props.onOpenDependencyHealth?.();
+                            }}
+                        >
+                            View & Fix
+                        </button>
+                    </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
-                        <span className="text-slate-400">yt-dlp</span> <StatusIcon ok={deps.yt_dlp} />
+                <div className="bg-slate-800/30 border border-slate-800 rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-300">Overall Status</span>
+                        <span className={`text-xs px-2 py-1 rounded-md border ${
+                            diagnostics?.ready
+                                ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30'
+                                : 'text-amber-300 bg-amber-500/10 border-amber-500/30'
+                        }`}>
+                            {diagnostics?.ready ? 'READY' : `BLOCKED (${diagnostics?.blockers?.length ?? 0})`}
+                        </span>
                     </div>
-                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
-                        <span className="text-slate-400">ffmpeg</span> <StatusIcon ok={deps.ffmpeg} />
+                    <div className="mt-2 text-xs text-slate-500">
+                        Last checked: {diagnostics?.generated_at || 'Not checked yet'}
                     </div>
-                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
-                        <span className="text-slate-400">whisper-cpp</span> <StatusIcon ok={deps.whisper} />
-                    </div>
-                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
-                        <span className="text-slate-400">ollama</span> <StatusIcon ok={deps.ollama} />
-                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 text-sm">
+                    {(diagnostics?.items || []).map((item) => (
+                        <div key={item.id} className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <div className="text-slate-300 truncate">{item.name}</div>
+                                <div className="text-xs text-slate-500 truncate">
+                                    ID: {item.id}
+                                    {item.is_blocker ? ' · blocker' : ''}
+                                </div>
+                            </div>
+                            <span className={`text-xs px-2 py-1 rounded-md border ${statusBadgeClass(item.status)}`}>
+                                {item.status.toUpperCase()}
+                            </span>
+                        </div>
+                    ))}
                 </div>
             </div>
 
