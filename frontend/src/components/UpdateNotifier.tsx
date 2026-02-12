@@ -36,10 +36,10 @@ export default function UpdateNotifier() {
             <div className="bg-slate-800 border border-blue-500/30 rounded-xl p-4 shadow-2xl shadow-blue-900/20 max-w-sm flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                        <h4 className="text-blue-400 font-semibold text-sm mb-1">yt-dlp 更新可用</h4>
+                        <h4 className="text-blue-400 font-semibold text-sm mb-1">yt-dlp Update Available</h4>
                         <p className="text-slate-300 text-xs leading-relaxed">
-                            发现新版本 <span className="text-white font-mono font-bold">{updateInfo.latest_version}</span> (当前: {updateInfo.local_version})。
-                            为了确保下载成功率，建议前往官网下载更新。
+                            New version <span className="text-white font-mono font-bold">{updateInfo.latest_version}</span> is available (Current: {updateInfo.local_version}).
+                            To ensure download success, it is recommended to update from the official website.
                         </p>
                     </div>
                     <button 
@@ -54,7 +54,7 @@ export default function UpdateNotifier() {
                         onClick={() => BrowserOpenURL(updateInfo.update_url)}
                         className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
                     >
-                        前往下载
+                        Download Now
                     </button>
                 </div>
             </div>
