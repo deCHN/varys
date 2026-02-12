@@ -1032,3 +1032,57 @@ func (a *App) GetAIModels(providerType, apiKey string) ([]string, error) {
 	an := analyzer.NewAnalyzer(providerType, apiKey, "")
 	return an.ListModels(a.ctx)
 }
+
+// YtDlpUpdateInfo holds information about yt-dlp version status.
+type YtDlpUpdateInfo struct {
+	LocalVersion  string `json:"local_version"`
+	LatestVersion string `json:"latest_version"`
+	UpdateURL     string `json:"update_url"`
+	HasUpdate     bool   `json:"has_update"`
+}
+
+// CheckYtDlpUpdate fetches latest version from GitHub and compares with local.
+func (a *App) CheckYtDlpUpdate() (YtDlpUpdateInfo, error) {
+	info := YtDlpUpdateInfo{
+		UpdateURL: "https://github.com/yt-dlp/yt-dlp/releases/latest",
+	}
+
+	// 1. Get local version
+	if a.depManager == nil {
+		return info, fmt.Errorf("dependency manager not initialized")
+	}
+
+	ytPath := a.depManager.GetBinaryPath("yt-dlp")
+	out, err := exec.Command(ytPath, "--version").Output()
+	if err == nil {
+		info.LocalVersion = strings.TrimSpace(string(out))
+	}
+
+	// 2. Fetch latest version from GitHub API (with timeout)
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequestWithContext(a.ctx, "GET", "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest", nil)
+	if err != nil {
+		return info, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return info, err
+	}
+	defer resp.Body.Close()
+
+	var release struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return info, err
+	}
+
+	info.LatestVersion = release.TagName
+	// Compare version strings (yt-dlp uses YYYY.MM.DD)
+	if info.LocalVersion != "" && info.LatestVersion != "" {
+		info.HasUpdate = info.LocalVersion != info.LatestVersion
+	}
+
+	return info, nil
+}

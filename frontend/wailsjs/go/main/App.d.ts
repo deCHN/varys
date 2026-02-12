@@ -7,6 +7,8 @@ export function CancelTask():Promise<void>;
 
 export function CheckDependencies():Promise<main.DependencyStatus>;
 
+export function CheckYtDlpUpdate():Promise<main.YtDlpUpdateInfo>;
+
 export function GetAIModels(arg1:string,arg2:string):Promise<Array<string>>;
 
 export function GetAppVersion():Promise<string>;

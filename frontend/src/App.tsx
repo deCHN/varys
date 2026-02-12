@@ -5,6 +5,7 @@ import { main } from '../wailsjs/go/models';
 import Dashboard from './Dashboard';
 import Settings from './Settings';
 import StartupHealthWizard from './components/StartupHealthWizard';
+import UpdateNotifier from './components/UpdateNotifier';
 import './App.css';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
 
     return (
         <div className="flex flex-col h-screen bg-slate-900 text-slate-100 font-sans">
+            <UpdateNotifier />
             {/* Top Navigation Bar */}
             <div className="flex items-center justify-center gap-6 py-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
                 <button

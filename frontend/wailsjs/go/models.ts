@@ -119,6 +119,24 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class YtDlpUpdateInfo {
+	    local_version: string;
+	    latest_version: string;
+	    update_url: string;
+	    has_update: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new YtDlpUpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.local_version = source["local_version"];
+	        this.latest_version = source["latest_version"];
+	        this.update_url = source["update_url"];
+	        this.has_update = source["has_update"];
+	    }
+	}
 
 }
 

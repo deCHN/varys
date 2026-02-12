@@ -10,6 +10,10 @@ export function CheckDependencies() {
   return window['go']['main']['App']['CheckDependencies']();
 }
 
+export function CheckYtDlpUpdate() {
+  return window['go']['main']['App']['CheckYtDlpUpdate']();
+}
+
 export function GetAIModels(arg1, arg2) {
   return window['go']['main']['App']['GetAIModels'](arg1, arg2);
 }
