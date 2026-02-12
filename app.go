@@ -9,9 +9,12 @@ import (
 	"Varys/backend/transcriber"
 	"Varys/backend/translation"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -66,7 +69,7 @@ func (a *App) startup(ctx context.Context) {
 	a.cfgManager = cm
 
 	// 3. Init Modules
-	cfg, _ := a.cfgManager.Load()
+	cfg := a.loadConfigSafe()
 
 	// Storage
 	vaultPath := cfg.VaultPath
@@ -203,7 +206,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	}
 
 	// Load latest config
-	cfg, _ := a.cfgManager.Load()
+	cfg := a.loadConfigSafe()
 
 	// Check if URL is actually a local file
 	isLocalFile := false
@@ -494,6 +497,26 @@ type DependencyStatus struct {
 	Ollama  bool `json:"ollama"`
 }
 
+type DiagnosticItem struct {
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Status        string   `json:"status"` // ok | missing | misconfigured
+	RequiredFor   []string `json:"required_for"`
+	DetectedPath  string   `json:"detected_path"`
+	FixSuggestion string   `json:"fix_suggestion"`
+	FixCommands   []string `json:"fix_commands"`
+	CanAutoFix    bool     `json:"can_auto_fix"`
+	IsBlocker     bool     `json:"is_blocker"`
+}
+
+type StartupDiagnostics struct {
+	GeneratedAt string           `json:"generated_at"`
+	Provider    string           `json:"provider"`
+	Blockers    []string         `json:"blockers"`
+	Ready       bool             `json:"ready"`
+	Items       []DiagnosticItem `json:"items"`
+}
+
 // CheckDependencies checks availability of external tools
 func (a *App) CheckDependencies() DependencyStatus {
 	status := DependencyStatus{}
@@ -533,6 +556,447 @@ func (a *App) CheckDependencies() DependencyStatus {
 	}
 
 	return status
+}
+
+// GetStartupDiagnostics returns a unified environment + config readiness report.
+func (a *App) GetStartupDiagnostics() StartupDiagnostics {
+	diag := StartupDiagnostics{
+		GeneratedAt: time.Now().Format(time.RFC3339),
+		Provider:    "ollama",
+		Ready:       true,
+		Items:       []DiagnosticItem{},
+		Blockers:    []string{},
+	}
+
+	depStatus := a.CheckDependencies()
+	cfg := &config.Config{}
+	if a.cfgManager != nil {
+		if loaded, err := a.cfgManager.Load(); err == nil && loaded != nil {
+			cfg = loaded
+		}
+	}
+	provider := cfg.AIProvider
+	if provider == "" {
+		provider = "ollama"
+	}
+	diag.Provider = provider
+
+	addItem := func(item DiagnosticItem) {
+		if item.IsBlocker {
+			diag.Blockers = append(diag.Blockers, item.ID)
+		}
+		diag.Items = append(diag.Items, item)
+	}
+
+	addItem(buildBinaryItem(
+		"yt-dlp",
+		"yt-dlp",
+		depStatus.YtDlp,
+		[]string{"download"},
+		true,
+		"请安装 yt-dlp，并确认其在 PATH 中可执行。",
+		[]string{"brew install yt-dlp"},
+	))
+
+	addItem(buildBinaryItem(
+		"ffmpeg",
+		"ffmpeg",
+		depStatus.Ffmpeg,
+		[]string{"download", "transcribe"},
+		true,
+		"请安装 ffmpeg，用于音频转换。",
+		[]string{"brew install ffmpeg"},
+	))
+
+	addItem(buildBinaryItem(
+		"whisper",
+		"whisper.cpp",
+		depStatus.Whisper,
+		[]string{"transcribe"},
+		true,
+		"请安装 whisper.cpp 可执行文件，并确保命令可在 PATH 中找到。",
+		[]string{"brew install whisper-cpp"},
+	))
+
+	modelPath := strings.TrimSpace(cfg.ModelPath)
+	modelOk := modelPath != ""
+	if modelOk {
+		if st, err := os.Stat(modelPath); err != nil || st.IsDir() {
+			modelOk = false
+		}
+	}
+	addItem(buildConfigItem(
+		"model_path",
+		"Whisper Model Path",
+		modelOk,
+		[]string{"transcribe"},
+		true,
+		modelPath,
+		"请在 Settings 中选择可访问的 Whisper 模型文件（.bin）。",
+		[]string{"在 Settings 页面点击 Browse 选择 Whisper 模型文件"},
+	))
+
+	ollamaBlocker := provider == "ollama"
+	ollamaRunning := checkOllamaRunning()
+	addItem(buildOllamaItem(depStatus.Ollama, ollamaRunning, ollamaBlocker))
+	addItem(buildOllamaModelsItem(ollamaRunning, ollamaBlocker))
+
+	vaultPath := strings.TrimSpace(cfg.VaultPath)
+	addItem(buildConfigItem(
+		"vault_path",
+		"Vault Path",
+		vaultPath != "",
+		[]string{"export"},
+		true,
+		vaultPath,
+		"请在 Settings 中选择 Obsidian Vault 目录。",
+		[]string{"在 Settings 页面点击 Browse 选择 Obsidian Vault"},
+	))
+
+	openAIKey := strings.TrimSpace(cfg.OpenAIKey)
+	openAIBlocker := provider == "openai"
+	addItem(buildConfigItem(
+		"openai_key",
+		"OpenAI API Key",
+		openAIKey != "",
+		[]string{"analyze"},
+		openAIBlocker,
+		maskSecretForDisplay(openAIKey),
+		"当前 AI Provider 使用 openai。请在 Settings 填写 OpenAI API Key。",
+		[]string{"在 Settings 页面填写 OpenAI API Key"},
+	))
+
+	diag.Ready = len(diag.Blockers) == 0
+	return diag
+}
+
+func buildBinaryItem(id, name string, ok bool, requiredFor []string, blockerIfMissing bool, fixSuggestion string, fixCommands []string) DiagnosticItem {
+	item := DiagnosticItem{
+		ID:            id,
+		Name:          name,
+		RequiredFor:   requiredFor,
+		FixSuggestion: fixSuggestion,
+		FixCommands:   fixCommands,
+		CanAutoFix:    false,
+	}
+
+	if ok {
+		item.Status = "ok"
+		item.DetectedPath = findBinaryPath(id)
+		item.IsBlocker = false
+	} else {
+		item.Status = "missing"
+		item.IsBlocker = blockerIfMissing
+	}
+	return item
+}
+
+func buildConfigItem(id, name string, ok bool, requiredFor []string, blockerIfBad bool, detectedPath, fixSuggestion string, fixCommands []string) DiagnosticItem {
+	item := DiagnosticItem{
+		ID:            id,
+		Name:          name,
+		RequiredFor:   requiredFor,
+		FixSuggestion: fixSuggestion,
+		FixCommands:   fixCommands,
+		CanAutoFix:    false,
+		DetectedPath:  detectedPath,
+	}
+
+	if ok {
+		item.Status = "ok"
+		item.IsBlocker = false
+	} else {
+		item.Status = "misconfigured"
+		item.IsBlocker = blockerIfBad
+	}
+
+	return item
+}
+
+func buildOllamaItem(installed bool, running bool, blockerIfBad bool) DiagnosticItem {
+	item := DiagnosticItem{
+		ID:          "ollama",
+		Name:        "ollama",
+		RequiredFor: []string{"analyze"},
+		CanAutoFix:  false,
+	}
+
+	if !installed {
+		item.Status = "missing"
+		item.IsBlocker = blockerIfBad
+		item.FixSuggestion = "当前 AI Provider 使用 ollama。请先安装 ollama。"
+		item.FixCommands = []string{"brew install ollama"}
+		return item
+	}
+
+	item.DetectedPath = findBinaryPath("ollama")
+	if running {
+		item.Status = "ok"
+		item.IsBlocker = false
+		item.FixSuggestion = "ollama 服务运行正常。"
+		item.FixCommands = []string{}
+		return item
+	}
+
+	item.Status = "misconfigured"
+	item.IsBlocker = blockerIfBad
+	item.CanAutoFix = true
+	item.FixSuggestion = "ollama 已安装但服务未运行。请启动服务。"
+	item.FixCommands = []string{"ollama serve"}
+	return item
+}
+
+func buildOllamaModelsItem(ollamaRunning bool, blockerIfBad bool) DiagnosticItem {
+	modelsPath := getOllamaModelsPath()
+	models, _ := getOllamaModelsFromAPI(ollamaRunning)
+	hasModels := len(models) > 0 || hasAnyModelFiles(modelsPath)
+
+	item := DiagnosticItem{
+		ID:           "ollama_models",
+		Name:         "Ollama Models",
+		RequiredFor:  []string{"analyze", "translate"},
+		DetectedPath: modelsPath,
+		CanAutoFix:   false,
+	}
+
+	if hasModels {
+		item.Status = "ok"
+		item.IsBlocker = false
+		item.FixSuggestion = "已检测到可用 Ollama models。"
+		return item
+	}
+
+	item.Status = "misconfigured"
+	item.IsBlocker = blockerIfBad
+	item.FixSuggestion = "未在 Ollama models 路径下检测到任何 model。请先下载 model。"
+	item.FixCommands = []string{
+		"ollama pull qwen3:8b",
+		"https://ollama.com/library",
+	}
+	return item
+}
+
+func findBinaryPath(name string) string {
+	path, err := exec.LookPath(name)
+	if err != nil {
+		return ""
+	}
+	return path
+}
+
+func checkOllamaRunning() bool {
+	client := http.Client{Timeout: 1500 * time.Millisecond}
+	resp, err := client.Get("http://127.0.0.1:11434/api/tags")
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode >= 200 && resp.StatusCode < 300
+}
+
+func getOllamaModelsPath() string {
+	if p := strings.TrimSpace(os.Getenv("OLLAMA_MODELS")); p != "" {
+		return p
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".ollama", "models")
+}
+
+type ollamaTagsResponse struct {
+	Models []struct {
+		Name string `json:"name"`
+	} `json:"models"`
+}
+
+func getOllamaModelsFromAPI(ollamaRunning bool) ([]string, error) {
+	if !ollamaRunning {
+		return nil, nil
+	}
+	client := http.Client{Timeout: 1500 * time.Millisecond}
+	resp, err := client.Get("http://127.0.0.1:11434/api/tags")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+	var parsed ollamaTagsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return nil, err
+	}
+	result := make([]string, 0, len(parsed.Models))
+	for _, m := range parsed.Models {
+		if strings.TrimSpace(m.Name) != "" {
+			result = append(result, m.Name)
+		}
+	}
+	return result, nil
+}
+
+func hasAnyModelFiles(modelsPath string) bool {
+	if strings.TrimSpace(modelsPath) == "" {
+		return false
+	}
+	if _, err := os.Stat(modelsPath); err != nil {
+		return false
+	}
+	found := false
+	_ = filepath.WalkDir(modelsPath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if !d.IsDir() {
+			found = true
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+func defaultConfig() *config.Config {
+	return &config.Config{
+		ContextSize:      8192,
+		TranslationModel: "qwen3:0.6b",
+		AIProvider:       "ollama",
+		OpenAIModel:      "gpt-4o",
+	}
+}
+
+// loadConfigSafe prevents startup/task crashes when config manager is unavailable
+// or config.json is malformed (for example an empty file).
+func (a *App) loadConfigSafe() *config.Config {
+	if a.cfgManager == nil {
+		if a.ctx != nil {
+			runtime.LogWarning(a.ctx, "Config manager unavailable, falling back to default config.")
+		}
+		return defaultConfig()
+	}
+
+	cfg, err := a.cfgManager.Load()
+	if err != nil || cfg == nil {
+		if a.ctx != nil {
+			runtime.LogWarningf(a.ctx, "Failed to load config, falling back to default config: %v", err)
+		}
+		return defaultConfig()
+	}
+
+	return cfg
+}
+
+// StartOllamaService tries to start `ollama serve` and waits briefly for readiness.
+func (a *App) StartOllamaService() (string, error) {
+	ollamaPath := findBinaryPath("ollama")
+	if ollamaPath == "" {
+		return "", fmt.Errorf("ollama binary not found in PATH")
+	}
+
+	if checkOllamaRunning() {
+		return "ollama is already running", nil
+	}
+
+	cmd := exec.Command(ollamaPath, "serve")
+	if err := cmd.Start(); err != nil {
+		return "", fmt.Errorf("failed to start ollama serve: %w", err)
+	}
+
+	go func() {
+		_ = cmd.Wait()
+	}()
+
+	deadline := time.Now().Add(6 * time.Second)
+	for time.Now().Before(deadline) {
+		if checkOllamaRunning() {
+			return "ollama started successfully", nil
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+
+	return "", fmt.Errorf("ollama process started but service is not ready yet")
+}
+
+// StopOllamaService tries to stop ollama server processes.
+func (a *App) StopOllamaService() (string, error) {
+	if !checkOllamaRunning() {
+		return "ollama is already stopped", nil
+	}
+
+	// Stop all ollama processes started by `ollama serve`.
+	cmd := exec.Command("pkill", "-x", "ollama")
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to stop ollama process: %w", err)
+	}
+
+	deadline := time.Now().Add(6 * time.Second)
+	for time.Now().Before(deadline) {
+		if !checkOllamaRunning() {
+			return "ollama stopped successfully", nil
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+
+	return "", fmt.Errorf("ollama stop command was sent but service is still responding")
+}
+
+// OpenOllamaModelLibrary opens Ollama model library in the default browser.
+func (a *App) OpenOllamaModelLibrary() string {
+	if a.ctx != nil {
+		runtime.BrowserOpenURL(a.ctx, "https://ollama.com/library")
+	}
+	return "opened ollama model library"
+}
+
+// UpdateVaultPath updates vault path directly for setup wizard flow.
+func (a *App) UpdateVaultPath(path string) error {
+	if a.cfgManager == nil {
+		return fmt.Errorf("config manager not initialized")
+	}
+	cfg := a.loadConfigSafe()
+	cfg.VaultPath = strings.TrimSpace(path)
+	return a.cfgManager.Save(cfg)
+}
+
+// UpdateModelPath updates whisper model path directly for setup wizard flow.
+func (a *App) UpdateModelPath(path string) error {
+	if a.cfgManager == nil {
+		return fmt.Errorf("config manager not initialized")
+	}
+	cfg := a.loadConfigSafe()
+	cfg.ModelPath = strings.TrimSpace(path)
+	return a.cfgManager.Save(cfg)
+}
+
+// UpdateOpenAIKey updates OpenAI API key directly for setup wizard flow.
+func (a *App) UpdateOpenAIKey(key string) error {
+	if a.cfgManager == nil {
+		return fmt.Errorf("config manager not initialized")
+	}
+	cfg := a.loadConfigSafe()
+	cfg.OpenAIKey = strings.TrimSpace(key)
+	return a.cfgManager.Save(cfg)
+}
+
+// ReadClipboardText returns text from system clipboard through Wails runtime.
+func (a *App) ReadClipboardText() (string, error) {
+	if a.ctx == nil {
+		return "", fmt.Errorf("application context not initialized")
+	}
+	return runtime.ClipboardGetText(a.ctx)
+}
+
+func maskSecretForDisplay(value string) string {
+	text := strings.TrimSpace(value)
+	if text == "" {
+		return ""
+	}
+	if len(text) <= 8 {
+		return text
+	}
+	return text[:4] + strings.Repeat("*", len(text)-8) + text[len(text)-4:]
 }
 
 // SelectVaultPath opens a directory dialog

@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
-import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, CheckDependencies, GetAIModels, GetConfigPath, GetAppVersion } from "../wailsjs/go/main/App";
+import { useState, useEffect, useRef } from 'react';
+import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics } from "../wailsjs/go/main/App";
+import { main } from "../wailsjs/go/models";
+import HealthStatusBadge from "./components/health/HealthStatusBadge";
+import HealthItemRow from "./components/health/HealthItemRow";
 
 interface Config {
     vault_path: string;
@@ -14,7 +17,12 @@ interface Config {
     openai_key: string;
 }
 
-export default function Settings() {
+interface SettingsProps {
+    isActive?: boolean;
+    onOpenDependencyHealth?: () => Promise<void> | void;
+}
+
+export default function Settings(props: SettingsProps) {
     const [cfg, setCfg] = useState<Config>({ 
         vault_path: '', 
         model_path: '', 
@@ -27,11 +35,12 @@ export default function Settings() {
         openai_model: 'gpt-4o',
         openai_key: ''
     });
-    const [deps, setDeps] = useState<any>({});
+    const [diagnostics, setDiagnostics] = useState<main.StartupDiagnostics | null>(null);
     const [aiModels, setAIModels] = useState<string[]>([]);
     const [configPath, setConfigPath] = useState<string>('');
     const [version, setVersion] = useState<string>('');
     const [status, setStatus] = useState<{msg: string, type: 'success' | 'error' | ''}>({msg: '', type: ''});
+    const systemCheckRef = useRef<HTMLDivElement>(null);
 
     const defaultPrompt = `You are an expert content analyst.
 Task: Analyze the following text and provide a structured analysis in [Target Language].
@@ -66,11 +75,39 @@ Format: Return ONLY a valid JSON object with the following structure:
         "Russian"
     ];
 
+    const refreshDiagnostics = () => {
+        GetStartupDiagnostics()
+            .then(setDiagnostics)
+            .catch(err => {
+                console.error("Failed to load startup diagnostics", err);
+            });
+    };
+
     useEffect(() => {
         GetConfig().then((c: any) => setCfg(c));
-        CheckDependencies().then(setDeps);
+        refreshDiagnostics();
         GetConfigPath().then(setConfigPath);
         GetAppVersion().then(setVersion);
+    }, []);
+
+    useEffect(() => {
+        if (props.isActive) {
+            refreshDiagnostics();
+        }
+    }, [props.isActive]);
+
+    useEffect(() => {
+        const onOpenSystemCheck = () => {
+            refreshDiagnostics();
+            setTimeout(() => {
+                systemCheckRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+        };
+
+        window.addEventListener('open-system-check', onOpenSystemCheck as EventListener);
+        return () => {
+            window.removeEventListener('open-system-check', onOpenSystemCheck as EventListener);
+        };
     }, []);
 
     useEffect(() => {
@@ -114,12 +151,6 @@ Format: Return ONLY a valid JSON object with the following structure:
     const resetPrompt = () => {
         setCfg({...cfg, custom_prompt: ''});
     };
-
-    const StatusIcon = ({ ok }: { ok: boolean }) => (
-        <span className={`ml-2 text-xs font-bold ${ok ? 'text-green-400' : 'text-red-400'}`}>
-            {ok ? "OK" : "MISSING"}
-        </span>
-    );
 
     return (
         <div className="max-w-2xl mx-auto p-8 w-full">
@@ -278,21 +309,41 @@ Format: Return ONLY a valid JSON object with the following structure:
                 </div>
             </div>
 
-            <div className="mb-10">
-                <h3 className="text-lg font-semibold text-slate-200 mb-6 border-b border-slate-800 pb-2">System Check</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
-                        <span className="text-slate-400">yt-dlp</span> <StatusIcon ok={deps.yt_dlp} />
+            <div className="mb-10" ref={systemCheckRef}>
+                <div className="flex items-center justify-between mb-6 border-b border-slate-800 pb-2">
+                    <h3 className="text-lg font-semibold text-slate-200">Dependency Health</h3>
+                    <div className="flex items-center gap-2">
+                        <button
+                            className="px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-xs text-slate-100 border border-slate-600"
+                            onClick={refreshDiagnostics}
+                        >
+                            Re-check
+                        </button>
+                        <button
+                            className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-xs text-white border border-blue-500/40"
+                            onClick={async () => {
+                                await props.onOpenDependencyHealth?.();
+                            }}
+                        >
+                            View & Fix
+                        </button>
                     </div>
-                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
-                        <span className="text-slate-400">ffmpeg</span> <StatusIcon ok={deps.ffmpeg} />
+                </div>
+                <div className="bg-slate-800/30 border border-slate-800 rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-300">Overall Status</span>
+                        <HealthStatusBadge
+                            status={diagnostics?.ready ? "ok" : "misconfigured"}
+                            isBlocker={!diagnostics?.ready}
+                        />
                     </div>
-                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
-                        <span className="text-slate-400">whisper-cpp</span> <StatusIcon ok={deps.whisper} />
+                    <div className="mt-2 text-xs text-slate-500">
+                        Last checked: {diagnostics?.generated_at || 'Not checked yet'}
                     </div>
-                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
-                        <span className="text-slate-400">ollama</span> <StatusIcon ok={deps.ollama} />
-                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 text-sm">
+                    {(diagnostics?.items || []).map((item) => <HealthItemRow key={item.id} item={item} />)}
                 </div>
             </div>
 

@@ -1,6 +1,4 @@
-//go:build integration
-
-package transcriber_test
+package integration_test
 
 import (
 	"Varys/backend/dependency"
@@ -80,7 +78,7 @@ func TestIntegrationTranscribe(t *testing.T) {
 
 	// 5. Run Transcriber
 	tr := transcriber.NewTranscriber(depMgr)
-	text, err := tr.Transcribe(audioFile, modelFile, nil)
+	text, _, err := tr.Transcribe(audioFile, modelFile, nil)
 	if err != nil {
 		t.Fatalf("Transcribe failed: %v", err)
 	}

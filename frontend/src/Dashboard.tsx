@@ -2,8 +2,14 @@ import { useState, useRef, useEffect } from 'react';
 import { useTaskRunner } from './hooks/useTaskRunner';
 import LogConsole from './components/LogConsole';
 import AnalysisViewer from './components/AnalysisViewer';
+import { GetStartupDiagnostics } from '../wailsjs/go/main/App';
+import { main } from '../wailsjs/go/models';
 
-export default function Dashboard() {
+interface DashboardProps {
+    onPreflightFailed?: (diag: main.StartupDiagnostics) => void;
+}
+
+export default function Dashboard(props: DashboardProps) {
     const [url, setUrl] = useState('');
     const [downloadVideo, setDownloadVideo] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -22,10 +28,19 @@ export default function Dashboard() {
         inputRef.current?.focus();
     }, []);
 
-    const handleProcessToggle = () => {
+    const handleProcessToggle = async () => {
         if (isProcessing) {
             cancel();
         } else {
+            try {
+                const diag = await GetStartupDiagnostics();
+                if (!diag.ready) {
+                    props.onPreflightFailed?.(diag);
+                    return;
+                }
+            } catch (err) {
+                console.error('Failed to run startup diagnostics', err);
+            }
             runTask(url, downloadVideo);
         }
     };

@@ -78,16 +78,24 @@ lint: ## Run linters (Go vet & NPM lint if configured)
 # Testing
 # ------------------------------------------------------------------------------
 
+TIMEOUT ?= 20s
+TIMEOUT_INT ?= 1m
+
 .PHONY: test
-test: test-unit test-frontend ## Run fast unit tests (backend & frontend)
+test: test-unit test-integration test-frontend ## Run all tests (unit, integration, frontend)
 
 .PHONY: test-backend
-test-backend: test-unit ## Alias for test-unit
+test-backend: test-unit test-integration ## Alias for all backend tests
 
 .PHONY: test-unit
-test-unit: ## Run Go unit tests (excludes benchmarks)
-	@echo "Running Unit Tests..."
-	cd $(PROJECT_DIR) && $(GO) test -v -timeout 20s $$(go list ./backend/... | grep -v benchmarks)
+test-unit: ## Run Go unit tests (excludes benchmarks and integration tests)
+	@echo "Running Unit Tests (Timeout: $(TIMEOUT))..."
+	cd $(PROJECT_DIR) && $(GO) test -v -timeout $(TIMEOUT) $$(go list ./backend/... | grep -vE "benchmarks|tests")
+
+.PHONY: test-integration
+test-integration: ## Run Go integration tests
+	@echo "Running Integration Tests (Timeout: $(TIMEOUT_INT))..."
+	cd $(PROJECT_DIR) && $(GO) test -v -timeout $(TIMEOUT_INT) ./backend/tests/integration/...
 
 .PHONY: test-benchmark
 test-benchmark: ## Run Go performance benchmarks
