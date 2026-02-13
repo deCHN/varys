@@ -137,6 +137,15 @@ transcribes them using Whisper, and generates structured analysis using LLMs (Ol
 	rootCmd.Flags().IntVar(&contextSize, "context-size", 0, "Context window size in tokens")
 	rootCmd.Flags().StringVar(&vaultPath, "vault", "", "Override path to Obsidian Vault")
 
+	// Add Flag Completion
+	rootCmd.RegisterFlagCompletionFunc("ai-provider", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"ollama", "openai"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	rootCmd.RegisterFlagCompletionFunc("target-lang", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"Simplified Chinese", "Traditional Chinese", "English", "Japanese", "French", "German"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
