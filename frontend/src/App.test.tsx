@@ -99,11 +99,11 @@ describe('App Component', () => {
         });
     });
 
-    it('renders the correct title and removes logo', () => {
+    it('renders the correct title and removes logo', async () => {
         render(<App />);
 
-        // Check Title (Now Tabs)
-        const tabElement = screen.getByText('Task');
+        // Use findBy to wait for initial render and background updates to settle
+        const tabElement = await screen.findByText('Task');
         expect(tabElement).toBeInTheDocument();
 
         // Check Logo is gone (by alt text)
@@ -111,11 +111,11 @@ describe('App Component', () => {
         expect(logo).not.toBeInTheDocument();
     });
 
-    it('renders the input and process button correctly', () => {
+    it('renders the input and process button correctly', async () => {
         render(<App />);
 
-        // Check Input
-        const inputElement = screen.getByPlaceholderText('Enter YouTube/Bilibili URL');
+        // Wait for the input to appear, which also allows background effects to run
+        const inputElement = await screen.findByPlaceholderText('Enter YouTube/Bilibili URL');
         expect(inputElement).toBeInTheDocument();
 
         // Check Button exists (by title or role)

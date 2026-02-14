@@ -127,6 +127,19 @@ build: clean ## Build the production application (macOS .app)
 	@echo "Building $(APP_NAME) v$(VERSION)..."
 	cd $(PROJECT_DIR) && $(WAILS) build -clean -platform darwin/arm64
 
+.PHONY: build-cli
+build-cli: ## Build the standalone CLI binary
+	@echo "Building Varys CLI..."
+	go build -o build/bin/varys-cli ./cmd/cli/main.go
+	@echo "CLI binary created at build/bin/varys-cli"
+
+.PHONY: install-cli
+install-cli: build-cli ## Install Varys CLI to GOPATH/bin
+	@echo "Installing Varys CLI to $(shell go env GOPATH)/bin..."
+	mkdir -p $(shell go env GOPATH)/bin
+	cp ./build/bin/varys-cli $(shell go env GOPATH)/bin/varys-cli
+	@echo "Varys CLI installed successfully to $(shell go env GOPATH)/bin"
+
 .PHONY: clean
 clean: ## Remove build artifacts and temp files
 	@echo "Cleaning build artifacts..."
@@ -135,16 +148,19 @@ clean: ## Remove build artifacts and temp files
 	rm -rf debug/
 
 .PHONY: release
-release: test build ## Run tests and build for release
+release: test build build-cli ## Run tests and build for release
 	@echo "Release build complete."
 	@echo "App location: $(PROJECT_DIR)/build/bin/$(APP_NAME).app"
+	@echo "CLI location: $(PROJECT_DIR)/build/bin/varys-cli"
 
 .PHONY: install
-install: build ## Build and Install the app to /Applications
+install: build build-cli ## Build and Install the app and CLI
 	@echo "Stopping $(APP_NAME) if running..."
 	-pkill -x "$(APP_NAME)" || true
 	@echo "Installing $(APP_NAME).app to /Applications..."
 	rm -rf "/Applications/$(APP_NAME).app"
 	cp -R "$(PROJECT_DIR)/build/bin/$(APP_NAME).app" /Applications/
-	@echo "$(APP_NAME) installed successfully."
-	@echo "You can now find it in your Applications folder or via Spotlight."
+	@echo "Installing Varys CLI to $(shell go env GOPATH)/bin..."
+	mkdir -p $(shell go env GOPATH)/bin
+	cp ./build/bin/varys-cli $(shell go env GOPATH)/bin/varys-cli
+	@echo "$(APP_NAME) and CLI installed successfully."

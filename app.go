@@ -5,13 +5,13 @@ import (
 	"Varys/backend/config"
 	"Varys/backend/dependency"
 	"Varys/backend/downloader"
+	"Varys/backend/service"
 	"Varys/backend/storage"
 	"Varys/backend/transcriber"
 	"Varys/backend/translation"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -33,6 +33,7 @@ type App struct {
 	transcriber    *transcriber.Transcriber
 	analyzer       *analyzer.Analyzer
 	translator     *translation.Translator
+	coreService    *service.CoreService
 
 	// Task Management
 	taskMutex  sync.Mutex
@@ -107,6 +108,9 @@ func (a *App) startup(ctx context.Context) {
 	a.analyzer = analyzer.NewAnalyzer(aiProvider, cfg.OpenAIKey, analyzerModel)
 	a.translator = translation.NewTranslator(translationModel)
 
+	// Initialize Core Service
+	a.coreService = service.NewCoreService(a.depManager)
+
 	runtime.LogInfo(a.ctx, "Backend initialized successfully.")
 }
 
@@ -121,13 +125,49 @@ func (a *App) CancelTask() {
 	}
 }
 
+// WailsLogger implements service.EventLogger for the desktop app.
+type WailsLogger struct {
+	app       *App
+	ctx       context.Context
+	logBuffer []string
+	hasError  bool
+}
+
+func (l *WailsLogger) Log(msg string) {
+	if l.ctx.Err() != nil {
+		return
+	}
+	l.logBuffer = append(l.logBuffer, fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), msg))
+	runtime.EventsEmit(l.app.ctx, "task:log", msg)
+
+	msgLower := strings.ToLower(msg)
+	if strings.Contains(msgLower, "error") || strings.Contains(msgLower, "failed") {
+		l.hasError = true
+	}
+}
+
+func (l *WailsLogger) Progress(percentage float64) {
+	if l.ctx.Err() == nil {
+		runtime.EventsEmit(l.app.ctx, "task:progress", percentage)
+	}
+}
+
+func (l *WailsLogger) AnalysisChunk(token string) {
+	if l.ctx.Err() == nil {
+		runtime.EventsEmit(l.app.ctx, "task:analysis", token)
+	}
+}
+
+func (l *WailsLogger) Error(err error) {
+	l.Log(fmt.Sprintf("Error: %v", err))
+}
+
 // SubmitTask starts the pipeline
 func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr error) {
 	runtime.LogInfo(a.ctx, fmt.Sprintf("Received task for URL: %s (AudioOnly: %v)", url, audioOnly))
 
 	// Setup Cancellation Context
 	a.taskMutex.Lock()
-	// Cancel previous if any
 	if a.taskCancel != nil {
 		a.taskCancel()
 	}
@@ -135,49 +175,30 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 	a.taskCancel = cancel
 	a.taskMutex.Unlock()
 
-	// Ensure cleanup
 	defer func() {
 		a.taskMutex.Lock()
 		if a.taskCancel != nil {
-			a.taskCancel() // Ensure context is cancelled
+			a.taskCancel()
 			a.taskCancel = nil
 		}
 		a.taskMutex.Unlock()
 	}()
 
-	var logBuffer []string
-	hasErrorLog := false
-
-	// logFunc captures logs and emits them
-	logFunc := func(msg string) {
-		// Check cancellation before logging
-		if ctx.Err() != nil {
-			return
-		}
-
-		logBuffer = append(logBuffer, fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), msg))
-		runtime.EventsEmit(a.ctx, "task:log", msg)
-
-		msgLower := strings.ToLower(msg)
-		if strings.Contains(msgLower, "error") || strings.Contains(msgLower, "failed") {
-			hasErrorLog = true
-		}
-	}
+	logger := &WailsLogger{app: a, ctx: ctx}
 
 	// Dump logs on exit if error occurred (and not cancelled)
 	defer func() {
 		if ctx.Err() == context.Canceled {
-			logFunc("Task cancelled by user.")
+			logger.Log("Task cancelled by user.")
 			return
 		}
-		if taskErr != nil || hasErrorLog {
+		if taskErr != nil || logger.hasError {
 			timestamp := time.Now().Format("2006-01-02_15-04-05")
-			logContent := strings.Join(logBuffer, "\n")
+			logContent := strings.Join(logger.logBuffer, "\n")
 			if taskErr != nil {
 				logContent += fmt.Sprintf("\n\n[FATAL ERROR] %v", taskErr)
 			}
 
-			// Save to ~/.varys/logs
 			home, _ := os.UserHomeDir()
 			debugDir := filepath.Join(home, ".varys", "logs")
 			os.MkdirAll(debugDir, 0755)
@@ -186,287 +207,44 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 			filePath := filepath.Join(debugDir, filename)
 			os.WriteFile(filePath, []byte(logContent), 0644)
 
-			// Copy to error_latest.log
 			latestPath := filepath.Join(debugDir, "error_latest.log")
 			os.WriteFile(latestPath, []byte(logContent), 0644)
 
-			logFunc(fmt.Sprintf("Logs dumped to %s", filePath))
+			logger.Log(fmt.Sprintf("Logs dumped to %s", filePath))
 		}
 	}()
-
-	tempDir, err := os.MkdirTemp("", "task_")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp dir: %w", err)
-	}
-	defer os.RemoveAll(tempDir) // Clean up temp files
-
-	// Check Cancel
-	if ctx.Err() != nil {
-		return "", ctx.Err()
-	}
 
 	// Load latest config
 	cfg := a.loadConfigSafe()
 
-	// Check if URL is actually a local file
-	isLocalFile := false
-	if info, err := os.Stat(url); err == nil && !info.IsDir() {
-		isLocalFile = true
-		runtime.LogInfo(a.ctx, "Local file detected: "+url)
+	opts := service.Options{
+		AudioOnly:      audioOnly,
+		ModelPath:      cfg.ModelPath,
+		LLMModel:       cfg.LLMModel,
+		TranslationMod: cfg.TranslationModel,
+		AIProvider:     cfg.AIProvider,
+		OpenAIKey:      cfg.OpenAIKey,
+		OpenAIModel:    cfg.OpenAIModel,
+		TargetLanguage: cfg.TargetLanguage,
+		ContextSize:    cfg.ContextSize,
+		CustomPrompt:   cfg.CustomPrompt,
+		VaultPath:      cfg.VaultPath,
 	}
 
-	// 0. Get Title
-	var videoTitle string
-	var videoDescription string
-	if isLocalFile {
-		videoTitle = strings.TrimSuffix(filepath.Base(url), filepath.Ext(url))
-		videoDescription = "Local file: " + url
-		logFunc(fmt.Sprintf("Local file detected, using filename as title: %s", videoTitle))
-	} else {
-		logFunc("Fetching video title...")
-		var err error
-		videoTitle, err = a.downloader.GetVideoTitle(url)
-		if err != nil {
-			videoTitle = "Task_" + time.Now().Format("20060102_150405")
-			logFunc(fmt.Sprintf("Warning: Failed to get title (%v), using fallback: %s", err, videoTitle))
-		} else {
-			logFunc(fmt.Sprintf("Title found: %s", videoTitle))
-		}
-
-		// Fetch Description
-		logFunc("Fetching video description...")
-		videoDescription, err = a.downloader.GetVideoDescription(url)
-		if err != nil {
-			logFunc(fmt.Sprintf("Warning: Failed to get description: %v", err))
-			videoDescription = ""
-		}
+	if opts.ContextSize == 0 {
+		opts.ContextSize = 8192
 	}
 
-	// Check Cancel
-	if ctx.Err() != nil {
-		return "", ctx.Err()
-	}
-
-	// 1. Download
-	var mediaPath string
-	if isLocalFile {
-		logFunc(fmt.Sprintf("Copying local file to temporary directory..."))
-		destPath := filepath.Join(tempDir, filepath.Base(url))
-
-		src, err := os.Open(url)
-		if err != nil {
-			return "", fmt.Errorf("failed to open local file: %w", err)
-		}
-		defer src.Close()
-
-		dst, err := os.Create(destPath)
-		if err != nil {
-			return "", fmt.Errorf("failed to create temp file: %w", err)
-		}
-		defer dst.Close()
-
-		if _, err = io.Copy(dst, src); err != nil {
-			return "", fmt.Errorf("failed to copy local file: %w", err)
-		}
-		mediaPath = destPath
-	} else {
-		logFunc(fmt.Sprintf("Downloading media from %s...", url))
-		var err error
-		mediaPath, err = a.downloader.DownloadMedia(url, tempDir, audioOnly, func(msg string) {
-			if ctx.Err() == nil {
-				logFunc("[DL] " + msg)
-			}
-		})
-		if err != nil {
-			// If context cancelled, err might be from downloader or our check
-			if ctx.Err() != nil {
-				return "", ctx.Err()
-			}
-			return "", fmt.Errorf("download failed: %w", err)
-		}
-	}
-	logFunc(fmt.Sprintf("Media ready: %s", mediaPath))
-
-	// Check Cancel
-	if ctx.Err() != nil {
-		return "", ctx.Err()
-	}
-
-	// 2. Transcribe
-	logFunc("Transcribing audio (this may take a while)...")
-	var sourceLang string
-	// Pass model from config dynamically
-	transcript, sourceLang, err := a.transcriber.Transcribe(mediaPath, cfg.ModelPath, func(msg string) {
-		if ctx.Err() == nil {
-			logFunc("[Whisper] " + msg)
-		}
-	})
-	if ctx.Err() != nil {
-		return "", ctx.Err()
-	}
+	result, err := a.coreService.ProcessTask(ctx, url, opts, logger)
 	if err != nil {
-		runtime.LogErrorf(a.ctx, "Transcription failed: %v", err)
-		logFunc("Transcription failed (check config/deps). Skipping analysis.")
-		transcript = "Transcription failed."
-	} else {
-		logFunc(fmt.Sprintf("Transcription complete (Detected Language: %s).", sourceLang))
-	}
-
-	// Check Cancel
-	if ctx.Err() != nil {
-		return "", ctx.Err()
-	}
-
-	// 3. Analyze & Translate
-	llmModel := cfg.LLMModel
-	translationModel := cfg.TranslationModel
-	if llmModel == "" {
-		llmModel = "qwen3:8b"
-	}
-	if translationModel == "" {
-		translationModel = "qwen3:0.6b"
-	}
-
-	aiProvider := cfg.AIProvider
-	analyzerModel := llmModel
-	if aiProvider == "openai" {
-		analyzerModel = cfg.OpenAIModel
-		if analyzerModel == "" {
-			analyzerModel = "gpt-4o"
-		}
-	}
-
-	localAnalyzer := analyzer.NewAnalyzer(aiProvider, cfg.OpenAIKey, analyzerModel)
-	localTranslator := translation.NewTranslator(translationModel)
-
-	targetLang := cfg.TargetLanguage
-	if targetLang == "" {
-		targetLang = "Simplified Chinese"
-	}
-
-	contextSize := cfg.ContextSize
-	if contextSize == 0 {
-		contextSize = 8192
-	}
-
-	var summary string
-	var analysis *analyzer.AnalysisResult
-	var translationPairs []translation.TranslationPair
-
-	if transcript != "Transcription failed." {
-		// Smart Translation Logic
-		shouldTranslate := true
-
-		// 1. Check if source matches target (Basic mapping)
-		isChineseSource := sourceLang == "zh"
-		isChineseTarget := strings.Contains(targetLang, "Chinese")
-
-		isEnglishSource := sourceLang == "en"
-		isEnglishTarget := strings.Contains(targetLang, "English")
-
-		if (isChineseSource && isChineseTarget) || (isEnglishSource && isEnglishTarget) {
-			shouldTranslate = false
-			logFunc("Source language matches target. Skipping translation.")
-		}
-
-		if shouldTranslate {
-			// Check Cancel
-			if ctx.Err() != nil {
-				return "", ctx.Err()
-			}
-
-			// A. Translate
-			logFunc(fmt.Sprintf("Translating text to %s (structured)...", targetLang))
-			var err error
-			translationPairs, err = localTranslator.Translate(transcript, targetLang, contextSize, func(current, total int) {
-				if ctx.Err() == nil {
-					percent := float64(current+1) / float64(total) * 100
-					runtime.EventsEmit(a.ctx, "task:progress", percent)
-				}
-			})
-			if ctx.Err() != nil {
-				return "", ctx.Err()
-			}
-			if err != nil {
-				runtime.LogErrorf(a.ctx, "Translation failed: %v", err)
-				logFunc(fmt.Sprintf("Translation failed: %v", err))
-			} else {
-				runtime.EventsEmit(a.ctx, "task:progress", 100.0) // Ensure it finishes
-				logFunc("Translation complete.")
-			}
-		}
-
-		// Check Cancel
 		if ctx.Err() != nil {
 			return "", ctx.Err()
 		}
-
-		// B. Analyze
-		logFunc("Analyzing content...")
-		analysis, err = localAnalyzer.Analyze(ctx, transcript, cfg.CustomPrompt, targetLang, contextSize, func(token string) {
-			if ctx.Err() == nil {
-				runtime.EventsEmit(a.ctx, "task:analysis", token)
-			}
-		})
-		if ctx.Err() != nil {
-			return "", ctx.Err()
-		}
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "Analysis failed: %v", err)
-			logFunc(fmt.Sprintf("Analysis failed: %v", err))
-			summary = "Analysis failed."
-			analysis = &analyzer.AnalysisResult{}
-		} else {
-			summary = analysis.Summary
-			logFunc("Analysis complete.")
-		}
+		taskErr = err
+		return "", err
 	}
 
-	// Check Cancel
-	if ctx.Err() != nil {
-		return "", ctx.Err()
-	}
-
-	// 4. Save
-	// Reload storage manager too? VaultPath might have changed.
-	vaultPath := cfg.VaultPath
-	if vaultPath == "" {
-		home, _ := os.UserHomeDir()
-		vaultPath = home
-	}
-	localStorage := storage.NewManager(vaultPath)
-
-	safeTitle := localStorage.SanitizeFilename(videoTitle)
-
-	finalMedia, err := localStorage.MoveMedia(mediaPath, safeTitle)
-	if err != nil {
-		return "", fmt.Errorf("failed to move media: %w", err)
-	}
-
-	noteData := storage.NoteData{
-		Title:            safeTitle,
-		URL:              url,
-		Language:         targetLang, // Use target language for note context
-		Description:      videoDescription,
-		Summary:          summary,
-		KeyPoints:        analysis.KeyPoints,
-		Tags:             analysis.Tags,
-		Assessment:       analysis.Assessment,
-		OriginalText:     transcript,
-		TranslationPairs: translationPairs,
-		AudioFile:        finalMedia,
-		AssetsFolder:     "assets",
-		CreatedTime:      time.Now().Format("2006-01-02 15:04"),
-		AIProvider:       analysis.Provider,
-		AIModel:          analysis.Model,
-	}
-
-	notePath, err := localStorage.SaveNote(noteData)
-	if err != nil {
-		return "", fmt.Errorf("failed to save note: %w", err)
-	}
-
-	return fmt.Sprintf("Saved to: %s", notePath), nil
+	return fmt.Sprintf("Saved to: %s", result.NotePath), nil
 }
 
 // GetAppVersion returns the current application version
