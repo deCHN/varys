@@ -37,7 +37,7 @@ func (p *CLIPresenter) Error(err error) {
 
 func main() {
 	var (
-		audioOnly      bool
+		videoOnly      bool
 		aiProvider     string
 		model          string
 		translationMod string
@@ -72,7 +72,7 @@ transcribes them using Whisper, and generates structured analysis using LLMs (Ol
 
 			// 3. Merge CLI Flags with Config
 			opts := service.Options{
-				AudioOnly:      audioOnly,
+				AudioOnly:      !videoOnly, // Default is AudioOnly unless --video is set
 				ModelPath:      cfg.ModelPath,
 				LLMModel:       cfg.LLMModel,
 				TranslationMod: cfg.TranslationModel,
@@ -129,8 +129,8 @@ transcribes them using Whisper, and generates structured analysis using LLMs (Ol
 	}
 
 	// Define Flags
-	rootCmd.Flags().BoolVarP(&audioOnly, "audio-only", "a", true, "Extract audio only (skip video download)")
-	rootCmd.Flags().StringVar(&aiProvider, "ai-provider", "", "AI provider to use (ollama or openai)")
+	rootCmd.Flags().BoolVarP(&videoOnly, "video", "v", false, "Download full video instead of audio only")
+	rootCmd.Flags().StringVarP(&aiProvider, "ai-provider", "p", "", "AI provider to use (ollama or openai)")
 	rootCmd.Flags().StringVar(&model, "model", "", "LLM model name (e.g. qwen3:8b or gpt-4o)")
 	rootCmd.Flags().StringVar(&translationMod, "translation-model", "", "Model used for translation (e.g. qwen3:0.6b)")
 	rootCmd.Flags().StringVar(&targetLang, "target-lang", "", "Target language for analysis and translation")
