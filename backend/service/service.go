@@ -116,7 +116,7 @@ func (s *CoreService) ProcessTask(ctx context.Context, url string, opts Options,
 	}
 
 	// 4. Translate & Analyze
-	var analysis *analyzer.AnalysisResult
+	analysis := &analyzer.AnalysisResult{}
 	var translationPairs []translation.TranslationPair
 	summary := "No analysis performed."
 

@@ -52,3 +52,30 @@ func TestAnalyze(t *testing.T) {
 		t.Errorf("Unexpected result: %s", result.Summary)
 	}
 }
+
+func TestNewAnalyzer(t *testing.T) {
+	// Test Ollama (Default)
+	an := NewAnalyzer("ollama", "", "qwen3:8b")
+	if an.provider.Name() != "ollama" {
+		t.Errorf("Expected ollama provider, got %s", an.provider.Name())
+	}
+
+	// Test OpenAI
+	anOpenAI := NewAnalyzer("openai", "sk-test", "gpt-4o")
+	if anOpenAI.provider.Name() != "openai" {
+		t.Errorf("Expected openai provider, got %s", anOpenAI.provider.Name())
+	}
+}
+
+func TestListModels(t *testing.T) {
+	mock := &MockProvider{Response: "test"}
+	an := &Analyzer{provider: mock}
+
+	models, err := an.ListModels(context.Background())
+	if err != nil {
+		t.Fatalf("ListModels failed: %v", err)
+	}
+	if len(models) != 1 || models[0] != "test-model" {
+		t.Errorf("Unexpected models: %v", models)
+	}
+}

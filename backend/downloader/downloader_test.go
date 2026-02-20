@@ -83,3 +83,63 @@ func TestDownloadMedia(t *testing.T) {
 		t.Error("Output file was not created")
 	}
 }
+
+func TestGetVideoTitle(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "title_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	binDir := filepath.Join(tempDir, "bin")
+	os.MkdirAll(binDir, 0755)
+	mockYtPath := filepath.Join(binDir, "yt-dlp")
+
+	scriptContent := "#!/bin/sh\necho 'Mock Video Title'"
+	if err := os.WriteFile(mockYtPath, []byte(scriptContent), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	oldPath := os.Getenv("PATH")
+	defer os.Setenv("PATH", oldPath)
+	os.Setenv("PATH", binDir+string(os.PathListSeparator)+oldPath)
+
+	dl := NewDownloader(&dependency.Manager{})
+	title, err := dl.GetVideoTitle("http://fake.url")
+	if err != nil {
+		t.Fatalf("GetVideoTitle failed: %v", err)
+	}
+	if title != "Mock Video Title" {
+		t.Errorf("Expected 'Mock Video Title', got '%s'", title)
+	}
+}
+
+func TestGetVideoDescription(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "desc_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	binDir := filepath.Join(tempDir, "bin")
+	os.MkdirAll(binDir, 0755)
+	mockYtPath := filepath.Join(binDir, "yt-dlp")
+
+	scriptContent := "#!/bin/sh\necho 'Mock Video Description'"
+	if err := os.WriteFile(mockYtPath, []byte(scriptContent), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	oldPath := os.Getenv("PATH")
+	defer os.Setenv("PATH", oldPath)
+	os.Setenv("PATH", binDir+string(os.PathListSeparator)+oldPath)
+
+	dl := NewDownloader(&dependency.Manager{})
+	desc, err := dl.GetVideoDescription("http://fake.url")
+	if err != nil {
+		t.Fatalf("GetVideoDescription failed: %v", err)
+	}
+	if desc != "Mock Video Description" {
+		t.Errorf("Expected 'Mock Video Description', got '%s'", desc)
+	}
+}

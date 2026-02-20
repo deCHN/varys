@@ -54,7 +54,7 @@ func TestIntegrationAnalysis(t *testing.T) {
 			an := analyzer.NewAnalyzer(tt.provider, key, tt.model)
 
 			// Timeout
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 
 			t.Logf("[START] Provider: %s, Model: %s", tt.provider, tt.model)
