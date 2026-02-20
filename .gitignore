@@ -1,10 +1,39 @@
+# Binaries & Dependencies
 backend/dependency/bin/
-build/bin
-frontend/dist
+build/bin/
+node_modules/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Frontend Build
+frontend/dist/
 frontend/package.json.md5
-node_modules
-res/
-Varys
-\n.debug
+
+# User Configuration (CRITICAL: DO NOT REMOVE)
+config.json
+.env
+*.key
+*.pem
+
+# Interaction & Logs
+.debug/
+logs/
+*.log
+chat.md
+
+# Temporary & Cache
+tmp/
+temp/
 .DS_Store
+.thumbs
+coverage.out
+.pytest_cache/
+__pycache__/
+
+# Output artifacts
 output/
+res/*.bin
+res/transcript.txt
+res/test_audio.wav
