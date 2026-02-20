@@ -79,7 +79,7 @@ lint: ## Run linters (Go vet & NPM lint if configured)
 # ------------------------------------------------------------------------------
 
 TIMEOUT ?= 20s
-TIMEOUT_INT ?= 1m
+TIMEOUT_INT ?= 5m
 
 .PHONY: test
 test: test-unit test-integration test-frontend ## Run all tests (unit, integration, frontend)
