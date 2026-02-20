@@ -12,19 +12,30 @@ import (
 	"testing"
 )
 
+func findProjectRoot() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "."
+}
+
 func TestIntegrationTranscribe(t *testing.T) {
 	// 1. Setup Environment
-	// wd, _ := os.Getwd()
-	// Assumes running from Varys/ or Varys/backend/transcriber
-	// We'll find the project root relative to this file
-	// Actually, easier to rely on hardcoded relative path if running from module root
-	projectRoot := "../.." // Assuming running from Varys/backend/transcriber
-	if _, err := os.Stat("go.mod"); err == nil {
-		projectRoot = "." // Running from Varys root
-	}
+	projectRoot := findProjectRoot()
 
 	resDir := filepath.Join(projectRoot, "res")
-	audioFile := filepath.Join(resDir, "test_audio.opus")
+	audioFile := filepath.Join(resDir, "test_audio.wav")
 
 	// Prefer the large model if the user downloaded it
 	modelFile := filepath.Join(resDir, "ggml-large-v3-turbo.bin")
