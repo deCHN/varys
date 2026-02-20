@@ -36,7 +36,6 @@ __pycache__/
 output/
 res/*.bin
 res/transcript.txt
-res/test_audio.wav
 
 # Internal Development & Instructions
 docs/
