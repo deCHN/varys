@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="res/varys_banner.png" width="100%" alt="Varys Banner">
+  <img src="docs/assets/varys_banner.png" width="100%" alt="Varys Banner">
 </p>
 
 <h1 align="center">Varys</h1>

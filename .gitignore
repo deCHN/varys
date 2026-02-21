@@ -34,11 +34,10 @@ __pycache__/
 
 # Output artifacts
 output/
-res/*.bin
-res/transcript.txt
+res/
 
 # Internal Development & Instructions
-docs/
+docs/features
 RULES_DEVELOPMENT.md
 GEMINI.md
 .gemini/
