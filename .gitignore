@@ -35,11 +35,9 @@ __pycache__/
 # Output artifacts
 output/
 res/
-!res/varys_banner.png
-!res/varys_logo.png
 
 # Internal Development & Instructions
-docs/
+docs/features
 RULES_DEVELOPMENT.md
 GEMINI.md
 .gemini/
