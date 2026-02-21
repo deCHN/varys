@@ -38,8 +38,8 @@ if [ "$NAME" = "ffmpeg" ]; then
 elif [ "$NAME" = "whisper-cli" ]; then
     # Find input after -f
     INPUT=""
-    while [[ $# -gt 0 ]]; do
-        if [ "$1" == "-f" ]; then
+    while [ $# -gt 0 ]; do
+        if [ "$1" = "-f" ]; then
             INPUT="$2"
             break
         fi
