@@ -1,38 +1,36 @@
 package translation
 
 import (
-	"encoding/json"
+	"bytes"
+	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
 func TestTranslate(t *testing.T) {
-	// 1. Mock Server
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			t.Errorf("Expected POST, got %s", r.Method)
-		}
-
-		// Verify request body contains text prompt, not JSON format instruction
-		// (Optional deep check)
-
-		// Return mock response (Numbered text lines)
-		resp := Response{
-			Response: "1. 你好.\n2. 世界。",
-			Done:     true,
-		}
-		json.NewEncoder(w).Encode(resp)
-	}))
-	defer ts.Close()
-
-	// 2. Init
+	// 1. Init translator with mock HTTP client (no real socket listener required).
 	tr := NewTranslator("test-model")
-	tr.apiURL = ts.URL // Override URL for testing
+	tr.client = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.Method != http.MethodPost {
+				t.Errorf("Expected POST, got %s", req.Method)
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(bytes.NewBufferString(`{"response":"1. 你好.\n2. 世界。","done":true}`)),
+			}, nil
+		}),
+	}
 
-	// 3. Run
-	// text, targetLang, contextSize, callback
+	// 2. Run
 	input := "Hello.\nWorld."
 	results, err := tr.Translate(input, "Simplified Chinese", 4096, nil)
 	if err != nil {

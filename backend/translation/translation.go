@@ -13,6 +13,7 @@ import (
 type Translator struct {
 	modelName string
 	apiURL    string
+	client    *http.Client
 }
 
 func NewTranslator(model string) *Translator {
@@ -22,6 +23,7 @@ func NewTranslator(model string) *Translator {
 	return &Translator{
 		modelName: model,
 		apiURL:    "http://localhost:11434/api/generate",
+		client:    http.DefaultClient,
 	}
 }
 
@@ -108,7 +110,18 @@ Input:
 			return nil, err
 		}
 
-		resp, err := http.Post(t.apiURL, "application/json", bytes.NewBuffer(jsonData))
+		req, err := http.NewRequest(http.MethodPost, t.apiURL, bytes.NewBuffer(jsonData))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		client := t.client
+		if client == nil {
+			client = http.DefaultClient
+		}
+
+		resp, err := client.Do(req)
 		if err != nil {
 			return nil, err
 		}
