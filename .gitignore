@@ -34,8 +34,9 @@ __pycache__/
 
 # Output artifacts
 output/
-res/*.bin
-res/transcript.txt
+res/
+!res/varys_banner.png
+!res/varys_logo.png
 
 # Internal Development & Instructions
 docs/
