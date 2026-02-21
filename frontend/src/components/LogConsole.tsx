@@ -2,9 +2,11 @@ import { useRef, useEffect } from 'react';
 
 interface LogConsoleProps {
     logs: string[];
+    version?: string;
+    onAboutClick?: () => void;
 }
 
-export default function LogConsole({ logs }: LogConsoleProps) {
+export default function LogConsole({ logs, version, onAboutClick }: LogConsoleProps) {
     const logEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -17,7 +19,7 @@ export default function LogConsole({ logs }: LogConsoleProps) {
     };
 
     return (
-        <div className="flex-1 flex flex-col bg-slate-800/50 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="flex-1 flex flex-col bg-slate-800/50 border border-slate-800 rounded-xl overflow-hidden relative group/console">
             <div className="px-4 py-3 border-b border-slate-800 bg-slate-800/80 font-medium text-slate-400 text-xs uppercase tracking-wider flex justify-between items-center">
                 <span>System Logs</span>
                 <button
@@ -31,7 +33,7 @@ export default function LogConsole({ logs }: LogConsoleProps) {
                     </svg>
                 </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-1 text-left select-text">
+            <div className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-1 text-left select-text relative">
                 {logs.length === 0 && <div className="text-slate-600 italic">Logs will appear here...</div>}
                 {logs.map((log, index) => (
                     <div key={index} className="text-slate-300 break-all border-l-2 border-transparent hover:border-slate-600 pl-2 -ml-2 py-0.5">
@@ -40,6 +42,16 @@ export default function LogConsole({ logs }: LogConsoleProps) {
                 ))}
                 <div ref={logEndRef} />
             </div>
+
+            {/* Version Badge inside the console box */}
+            {version && (
+                <button
+                    onClick={onAboutClick}
+                    className="absolute bottom-2 right-3 text-[9px] font-bold text-slate-600/50 hover:text-varys-primary transition-colors tracking-widest uppercase z-20 bg-slate-900/40 backdrop-blur-sm px-1.5 py-0.5 rounded border border-white/5"
+                >
+                    v{version}
+                </button>
+            )}
         </div>
     );
 }
