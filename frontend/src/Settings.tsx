@@ -19,6 +19,7 @@ interface Config {
 
 interface SettingsProps {
     isActive?: boolean;
+    onSaved?: () => void;
     onOpenDependencyHealth?: () => Promise<void> | void;
 }
 
@@ -130,7 +131,10 @@ Format: Return ONLY a valid JSON object with the following structure:
         setStatus({msg: 'Saving...', type: ''});
         UpdateConfig(cfg as any).then(() => {
             setStatus({msg: `Saved to: ${configPath}`, type: 'success'});
-            setTimeout(() => setStatus({msg: '', type: ''}), 5000);
+            setTimeout(() => {
+                setStatus({msg: '', type: ''});
+                props.onSaved?.();
+            }, 1000);
         }).catch(err => {
             setStatus({msg: `Error: ${err}`, type: 'error'});
         });
@@ -156,19 +160,19 @@ Format: Return ONLY a valid JSON object with the following structure:
         <div className="max-w-2xl mx-auto p-8 w-full">
 
             <div className="mb-10">
-                <h3 className="text-lg font-semibold text-slate-200 mb-6 border-b border-slate-800 pb-2">Configuration</h3>
+                <h3 className="text-lg font-bold text-white mb-6 border-b border-varys-border/20 pb-2">Configuration</h3>
 
                 <div className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-2">Obsidian Vault</label>
+                        <label className="block text-sm font-semibold text-slate-400 mb-2">Obsidian Vault</label>
                         <div className="flex gap-2">
                             <input
-                                className="flex-1 bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                className="flex-1 bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 shadow-inner"
                                 value={cfg.vault_path}
                                 readOnly
                             />
                             <button
-                                className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-slate-600"
+                                className="bg-varys-muted hover:bg-varys-muted/80 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-varys-border/10 shadow-lg"
                                 onClick={selectVault}
                             >
                                 Browse
@@ -177,15 +181,15 @@ Format: Return ONLY a valid JSON object with the following structure:
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-2">Whisper Model (.bin)</label>
+                        <label className="block text-sm font-semibold text-slate-400 mb-2">Whisper Model (.bin)</label>
                         <div className="flex gap-2">
                             <input
-                                className="flex-1 bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                className="flex-1 bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 shadow-inner"
                                 value={cfg.model_path}
                                 readOnly
                             />
                             <button
-                                className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-slate-600"
+                                className="bg-varys-muted hover:bg-varys-muted/80 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-varys-border/10 shadow-lg"
                                 onClick={selectModel}
                             >
                                 Browse
@@ -194,9 +198,9 @@ Format: Return ONLY a valid JSON object with the following structure:
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-2">AI Provider</label>
+                        <label className="block text-sm font-semibold text-slate-400 mb-2">AI Provider</label>
                         <select
-                            className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none"
+                            className="w-full bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 appearance-none shadow-inner"
                             value={cfg.ai_provider || 'ollama'}
                             onChange={e => setCfg({...cfg, ai_provider: e.target.value})}
                         >
@@ -207,32 +211,32 @@ Format: Return ONLY a valid JSON object with the following structure:
 
                     {cfg.ai_provider === 'openai' && (
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2 flex justify-between">
+                            <label className="block text-sm font-semibold text-slate-400 mb-2 flex justify-between">
                                 <span>API Key</span>
-                                <span className={`text-xs ${cfg.openai_key && cfg.openai_key.length > 20 ? 'text-green-400' : 'text-slate-500'}`}>
+                                <span className={`text-xs ${cfg.openai_key && cfg.openai_key.length > 20 ? 'text-varys-secondary' : 'text-slate-500'}`}>
                                     {cfg.openai_key ? `Length: ${cfg.openai_key.length}` : 'Not Set'}
                                 </span>
                             </label>
                             <input
                                 type="password"
-                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono"
+                                className="w-full bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 font-mono shadow-inner"
                                 value={cfg.openai_key || ''}
                                 onChange={e => setCfg({...cfg, openai_key: e.target.value})}
                                 placeholder="sk-..."
                             />
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 text-[10px] text-slate-500 italic">
                                 Your API Key is stored locally in <code>config.json</code>.
                             </p>
                         </div>
                     )}
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-2">
+                        <label className="block text-sm font-semibold text-slate-400 mb-2">
                             {cfg.ai_provider === 'openai' ? 'OpenAI Model' : 'Ollama Model'}
                         </label>
                         {aiModels.length > 0 ? (
                             <select
-                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none"
+                                className="w-full bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 appearance-none shadow-inner"
                                 value={cfg.ai_provider === 'openai' ? cfg.openai_model : cfg.llm_model}
                                 onChange={e => {
                                     if (cfg.ai_provider === 'openai') {
@@ -247,7 +251,7 @@ Format: Return ONLY a valid JSON object with the following structure:
                             </select>
                         ) : (
                             <input
-                                className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                className="w-full bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 shadow-inner"
                                 value={cfg.ai_provider === 'openai' ? cfg.openai_model : cfg.llm_model}
                                 onChange={e => {
                                     if (cfg.ai_provider === 'openai') {
@@ -262,9 +266,9 @@ Format: Return ONLY a valid JSON object with the following structure:
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-2">Target Language</label>
+                        <label className="block text-sm font-semibold text-slate-400 mb-2">Target Language</label>
                         <select
-                            className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none"
+                            className="w-full bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 appearance-none shadow-inner"
                             value={cfg.target_language || "Simplified Chinese"}
                             onChange={e => setCfg({...cfg, target_language: e.target.value})}
                         >
@@ -273,9 +277,9 @@ Format: Return ONLY a valid JSON object with the following structure:
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-2">Context Size (Tokens)</label>
+                        <label className="block text-sm font-semibold text-slate-400 mb-2">Context Size (Tokens)</label>
                         <select 
-                            className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 appearance-none" 
+                            className="w-full bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 appearance-none shadow-inner" 
                             value={cfg.context_size || 8192} 
                             onChange={e => setCfg({...cfg, context_size: parseInt(e.target.value)})} 
                         >
@@ -284,60 +288,48 @@ Format: Return ONLY a valid JSON object with the following structure:
                             <option value={16384}>16k (High)</option>
                             <option value={32768}>32k (Max)</option>
                         </select>
-                        <p className="mt-1 text-xs text-slate-500">
-                            Higher values allow longer videos but require more RAM. 8k is safe for 16GB RAM.
+                        <p className="mt-1 text-[10px] text-slate-500 italic">
+                            Higher values require more RAM. 8k is recommended for most setups.
                         </p>
                     </div>
 
                     <div>
                         <div className="flex justify-between items-center mb-2">
-                             <label className="block text-sm font-medium text-slate-400">Custom Analysis Prompt</label>
-                             <button onClick={resetPrompt} className="text-xs text-blue-400 hover:text-blue-300 hover:underline">Reset to Default</button>
+                             <label className="block text-sm font-semibold text-slate-400">Custom Analysis Prompt</label>
+                             <button onClick={resetPrompt} className="text-xs text-varys-secondary hover:underline">Reset to Default</button>
                         </div>
                         <textarea 
-                            className="w-full bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono"
-                            rows={8}
+                            className="w-full bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 font-mono shadow-inner"
+                            rows={6}
                             placeholder={defaultPrompt}
                             value={cfg.custom_prompt || ""}
                             onChange={e => setCfg({...cfg, custom_prompt: e.target.value})}
                         />
-                        <p className="mt-1 text-xs text-slate-500">
-                            Leave empty to use the default smart prompt. If set, this will replace the system instruction. 
-                            Ensure you request JSON format compatible with the app.
-                        </p>
                     </div>
                 </div>
             </div>
 
             <div className="mb-10" ref={systemCheckRef}>
-                <div className="flex items-center justify-between mb-6 border-b border-slate-800 pb-2">
-                    <h3 className="text-lg font-semibold text-slate-200">Dependency Health</h3>
+                <div className="flex items-center justify-between mb-6 border-b border-varys-border/20 pb-2">
+                    <h3 className="text-lg font-bold text-white">Dependency Health</h3>
                     <div className="flex items-center gap-2">
                         <button
-                            className="px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-xs text-slate-100 border border-slate-600"
+                            className="px-3 py-1.5 rounded-md bg-varys-muted hover:bg-varys-muted/80 text-xs text-slate-100 border border-varys-border/10 transition-colors shadow-lg"
                             onClick={refreshDiagnostics}
                         >
                             Re-check
                         </button>
-                        <button
-                            className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-xs text-white border border-blue-500/40"
-                            onClick={async () => {
-                                await props.onOpenDependencyHealth?.();
-                            }}
-                        >
-                            View & Fix
-                        </button>
                     </div>
                 </div>
-                <div className="bg-slate-800/30 border border-slate-800 rounded-lg p-4 mb-4">
+                <div className="bg-varys-surface/40 border border-varys-border/10 rounded-xl p-5 mb-4 shadow-xl">
                     <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-300">Overall Status</span>
+                        <span className="text-sm font-medium text-slate-300">Overall Status</span>
                         <HealthStatusBadge
                             status={diagnostics?.ready ? "ok" : "misconfigured"}
                             isBlocker={!diagnostics?.ready}
                         />
                     </div>
-                    <div className="mt-2 text-xs text-slate-500">
+                    <div className="mt-2 text-[10px] text-slate-500 uppercase tracking-wider font-bold">
                         Last checked: {diagnostics?.generated_at || 'Not checked yet'}
                     </div>
                 </div>
@@ -347,21 +339,21 @@ Format: Return ONLY a valid JSON object with the following structure:
                 </div>
             </div>
 
-            <div className="flex flex-col items-end gap-3 pt-6 border-t border-slate-800">
+            <div className="flex flex-col items-end gap-3 pt-8 border-t border-varys-border/20">
                 <button
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-blue-900/20 active:scale-95"
+                    className="bg-varys-primary hover:bg-varys-primary/80 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-xl shadow-varys-primary/20 active:scale-95"
                     onClick={save}
                 >
                     Save Changes
                 </button>
                 {status.msg && (
-                    <div className={`text-xs ${status.type === 'error' ? 'text-red-400' : 'text-green-400'} text-right max-w-full break-all`}>
+                    <div className={`text-xs font-semibold ${status.type === 'error' ? 'text-red-400' : 'text-varys-secondary'} text-right max-w-full break-all`}>
                         {status.msg}
                     </div>
                 )}
             </div>
 
-            <div className="mt-8 text-center text-xs text-slate-600">
+            <div className="mt-8 text-center text-[10px] text-slate-600 font-bold uppercase tracking-widest">
                 Varys {version}
             </div>
         </div>

@@ -6,6 +6,7 @@ import Dashboard from './Dashboard';
 import Settings from './Settings';
 import StartupHealthWizard from './components/StartupHealthWizard';
 import UpdateNotifier from './components/UpdateNotifier';
+import logo from './assets/images/varys_logo.png';
 import './App.css';
 
 function App() {
@@ -30,31 +31,38 @@ function App() {
     }, [refreshDiagnostics]);
 
     return (
-        <div className="flex flex-col h-screen bg-slate-900 text-slate-100 font-sans">
+        <div className="flex flex-col h-screen bg-varys-bg text-slate-100 font-sans selection:bg-varys-primary/30">
             <UpdateNotifier />
             {/* Top Navigation Bar */}
-            <div className="flex items-center justify-center gap-6 py-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
-                <button
-                    className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
-                        view === 'dashboard'
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
-                    onClick={() => setView('dashboard')}
-                >
-                    Task
-                </button>
-                <button
-                    className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
-                        view === 'settings'
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
-                    onClick={() => setView('settings')}
-                >
-                    Settings
-                </button>
-            </div>
+            <header className="flex items-center justify-between px-8 py-4 border-b border-varys-border/10 bg-varys-bg/80 backdrop-blur-md sticky top-0 z-10">
+                <div className="flex-1">
+                    {/* Left side empty for macOS traffic lights */}
+                </div>
+                
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => setView(view === 'dashboard' ? 'settings' : 'dashboard')}
+                        className={`p-1.5 rounded-xl transition-all group relative flex items-center justify-center ${
+                            view === 'settings' 
+                            ? 'bg-varys-primary/20 ring-1 ring-varys-primary/50' 
+                            : 'hover:bg-white/5'
+                        }`}
+                        title="Settings"
+                    >
+                        {/* The Gear Icon - Custom size to fit logo in center */}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={`text-slate-500 group-hover:text-varys-primary group-hover:rotate-90 transition-all duration-700 ${view === 'settings' ? 'rotate-90 text-varys-primary' : ''}`}>
+                            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                        </svg>
+                        
+                        {/* The Small Logo inside the Gear */}
+                        <img 
+                            src={logo} 
+                            alt="Logo" 
+                            className={`absolute w-3.5 h-3.5 rounded-full shadow-sm transition-transform duration-700 ${view === 'settings' ? 'scale-110' : 'group-hover:scale-110'}`} 
+                        />
+                    </button>
+                </div>
+            </header>
 
             {/* Main Content Area */}
             <main className="flex-1 overflow-hidden flex flex-col relative">
@@ -69,6 +77,7 @@ function App() {
                 <div className={`absolute inset-0 overflow-y-auto ${view === 'settings' ? 'block' : 'hidden'}`}>
                     <Settings
                         isActive={view === 'settings'}
+                        onSaved={() => setView('dashboard')}
                         onOpenDependencyHealth={async () => {
                             await refreshDiagnostics();
                             setWizardOpen(true);
