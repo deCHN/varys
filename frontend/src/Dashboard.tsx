@@ -7,6 +7,8 @@ import { main } from '../wailsjs/go/models';
 
 interface DashboardProps {
     onPreflightFailed?: (diag: main.StartupDiagnostics) => void;
+    version?: string;
+    onAboutClick?: () => void;
 }
 
 export default function Dashboard(props: DashboardProps) {
@@ -51,16 +53,14 @@ export default function Dashboard(props: DashboardProps) {
 
     return (
         <div className="flex flex-col h-full max-w-5xl mx-auto p-6 w-full relative">
-            {/* Hero Section (Only show when idle) */}
-            {!isProcessing && !logs.length && !analysisStream && (
-                <div className="flex flex-col items-center justify-center pt-12 pb-6 animate-in fade-in slide-in-from-top-4 duration-1000">
-                    <h2 className="text-3xl font-bold text-white mb-3 tracking-tight">Capture, Analyze, Transcribe</h2>
-                    <p className="text-slate-400 text-base max-w-md text-center font-medium opacity-80">Your personal video intelligence agent for Obsidian.</p>
-                </div>
-            )}
+            {/* Hero Section (Always visible to prevent jumps) */}
+            <div className="flex flex-col items-center justify-center py-12 animate-in fade-in duration-700">
+                <h2 className="text-3xl font-bold text-white mb-1 tracking-tight">Capture Analyze Transcribe</h2>
+                <p className="text-slate-400 text-base text-center font-medium opacity-80">Private, offline intelligence for your second brain.</p>
+            </div>
 
             {/* Input Section */}
-            <div className={`flex gap-3 mb-6 items-center transition-all duration-500 ${!isProcessing && !logs.length && !analysisStream ? 'mt-4' : 'mt-0'}`}>
+            <div className="flex gap-3 mb-6 items-center">
                 <div className="flex-1 relative group">
                     <input
                         ref={inputRef}
@@ -123,7 +123,7 @@ export default function Dashboard(props: DashboardProps) {
 
             {/* Split View: Logs & Analysis */}
             <div className="flex gap-6 flex-1 min-h-0">
-                <LogConsole logs={logs} />
+                <LogConsole logs={logs} version={props.version} onAboutClick={props.onAboutClick} />
                 <AnalysisViewer content={analysisStream} />
             </div>
 
