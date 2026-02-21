@@ -7,12 +7,16 @@ import Settings from './Settings';
 import StartupHealthWizard from './components/StartupHealthWizard';
 import UpdateNotifier from './components/UpdateNotifier';
 import logo from './assets/images/varys_logo.png';
+import varysBg from './assets/images/varys.png';
+import { GetAppVersion } from '../wailsjs/go/main/App';
 import './App.css';
 
 function App() {
     const [view, setView] = useState<'dashboard' | 'settings'>('dashboard');
     const [diagnostics, setDiagnostics] = useState<main.StartupDiagnostics | null>(null);
     const [wizardOpen, setWizardOpen] = useState(false);
+    const [version, setVersion] = useState<string>('');
+    const [aboutOpen, setAboutOpen] = useState(false);
 
     const refreshDiagnostics = useCallback(async () => {
         try {
@@ -28,10 +32,11 @@ function App() {
 
     useEffect(() => {
         refreshDiagnostics();
+        GetAppVersion().then(setVersion).catch(console.error);
     }, [refreshDiagnostics]);
 
     return (
-        <div className="flex flex-col h-screen bg-varys-bg text-slate-100 font-sans selection:bg-varys-primary/30">
+        <div className="flex flex-col h-screen bg-varys-bg text-slate-100 font-sans selection:bg-varys-primary/30 relative">
             <UpdateNotifier />
             {/* Top Navigation Bar */}
             <header className="flex items-center justify-between px-8 py-4 border-b border-varys-border/10 bg-varys-bg/80 backdrop-blur-md sticky top-0 z-10">
@@ -72,6 +77,8 @@ function App() {
                             setDiagnostics(diag);
                             setWizardOpen(true);
                         }}
+                        version={version}
+                        onAboutClick={() => setAboutOpen(true)}
                     />
                 </div>
                 <div className={`absolute inset-0 overflow-y-auto ${view === 'settings' ? 'block' : 'hidden'}`}>
@@ -85,6 +92,66 @@ function App() {
                     />
                 </div>
             </main>
+
+            {/* About Modal */}
+            {aboutOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setAboutOpen(false)} />
+                    
+                    <div className="relative w-[480px] aspect-square bg-varys-bg border border-varys-border/30 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300">
+                        {/* varys.png Background - More obvious */}
+                        <div 
+                            className="absolute inset-0 opacity-40 pointer-events-none"
+                            style={{ 
+                                backgroundImage: `url(${varysBg})`,
+                                backgroundPosition: 'center',
+                                backgroundRepeat: 'no-repeat',
+                                backgroundSize: 'cover'
+                            }}
+                        />
+
+                        {/* Content Overlay to ensure readability */}
+                        <div className="relative h-full p-10 flex flex-col items-center justify-center text-center bg-gradient-to-b from-varys-bg/20 via-varys-bg/60 to-varys-bg/90">
+                            <button 
+                                onClick={() => setAboutOpen(false)}
+                                className="absolute top-6 right-6 p-2 text-white/50 hover:text-white transition-colors z-20"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+
+                            <div className="z-10 mt-auto">
+                                <h2 className="text-4xl font-black text-white mb-2 tracking-tighter drop-shadow-2xl">Varys</h2>
+                                <p className="text-varys-secondary text-sm font-black tracking-[0.2em] uppercase mb-8 drop-shadow-md">Version {version}</p>
+                                
+                                <div className="space-y-6 max-w-xs">
+                                    <p className="text-slate-100 text-sm leading-relaxed font-bold drop-shadow-lg">
+                                        Private, offline multimedia intelligence for your second brain.
+                                    </p>
+                                    
+                                    <div className="flex flex-col items-center gap-4">
+                                        <a 
+                                            href="https://github.com/dechn/varys" 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-2 transition-colors font-black bg-black/40 px-4 py-2 rounded-full border border-white/5"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                                            GITHUB
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setAboutOpen(false)}
+                                className="mt-auto mb-4 px-10 py-3 bg-varys-primary hover:bg-varys-primary/80 text-white rounded-2xl text-sm font-black shadow-2xl shadow-varys-primary/40 transition-all active:scale-95 z-10 border border-white/10"
+                            >
+                                CLOSE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <StartupHealthWizard
                 diagnostics={diagnostics}
