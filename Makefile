@@ -122,30 +122,35 @@ test-e2e: ## Run End-to-End Tests (Playwright)
 # Build & Release
 # ------------------------------------------------------------------------------
 
+BUILD_LOG := .build.log
+
 .PHONY: build
 build: clean ## Build the production application (macOS .app)
-	@echo "Building $(APP_NAME) v$(VERSION)..."
-	cd $(PROJECT_DIR) && $(WAILS) build -clean -platform darwin/arm64
+	@echo -n "  • Building $(APP_NAME) v$(VERSION) (GUI)... "
+	@cd $(PROJECT_DIR) && $(WAILS) build -clean -platform darwin/arm64 > $(BUILD_LOG) 2>&1 || (echo "FAILED (see $(BUILD_LOG))" && exit 1)
+	@echo "DONE"
 
 .PHONY: build-cli
 build-cli: ## Build the standalone CLI binary
-	@echo "Building Varys CLI..."
-	go build -o build/bin/varys-cli ./cmd/cli/main.go
-	@echo "CLI binary created at build/bin/varys-cli"
+	@echo -n "  • Building $(APP_NAME) v$(VERSION) (CLI)... "
+	@$(GO) build -o build/bin/varys-cli ./cmd/cli/main.go > $(BUILD_LOG) 2>&1 || (echo "FAILED (see $(BUILD_LOG))" && exit 1)
+	@echo "DONE"
 
 .PHONY: install-cli
 install-cli: build-cli ## Install Varys CLI to GOPATH/bin
-	@echo "Installing Varys CLI to $(shell go env GOPATH)/bin..."
-	mkdir -p $(shell go env GOPATH)/bin
-	cp ./build/bin/varys-cli $(shell go env GOPATH)/bin/varys-cli
-	@echo "Varys CLI installed successfully to $(shell go env GOPATH)/bin"
+	@echo -n "  • Installing CLI to $(shell go env GOPATH)/bin... "
+	@mkdir -p $(shell go env GOPATH)/bin
+	@cp ./build/bin/varys-cli $(shell go env GOPATH)/bin/varys-cli
+	@echo "DONE"
 
 .PHONY: clean
 clean: ## Remove build artifacts and temp files
-	@echo "Cleaning build artifacts..."
-	rm -rf $(PROJECT_DIR)/build/bin
-	rm -rf $(PROJECT_DIR)/frontend/dist
-	rm -rf debug/
+	@echo -n "  • Cleaning build artifacts... "
+	@rm -rf $(PROJECT_DIR)/build/bin > /dev/null 2>&1
+	@rm -rf $(PROJECT_DIR)/frontend/dist > /dev/null 2>&1
+	@rm -rf debug/ > /dev/null 2>&1
+	@rm -f $(BUILD_LOG) > /dev/null 2>&1
+	@echo "DONE"
 
 .PHONY: release
 release: test build build-cli ## Run tests and build for release
@@ -155,12 +160,12 @@ release: test build build-cli ## Run tests and build for release
 
 .PHONY: install
 install: build build-cli ## Build and Install the app and CLI
-	@echo "Stopping $(APP_NAME) if running..."
-	-pkill -x "$(APP_NAME)" || true
-	@echo "Installing $(APP_NAME).app to /Applications..."
-	rm -rf "/Applications/$(APP_NAME).app"
-	cp -R "$(PROJECT_DIR)/build/bin/$(APP_NAME).app" /Applications/
-	@echo "Installing Varys CLI to $(shell go env GOPATH)/bin..."
-	mkdir -p $(shell go env GOPATH)/bin
-	cp ./build/bin/varys-cli $(shell go env GOPATH)/bin/varys-cli
-	@echo "$(APP_NAME) and CLI installed successfully."
+	@echo "  • Preparation: stopping $(APP_NAME) if running."
+	@-pkill -x "$(APP_NAME)" > /dev/null 2>&1 || true
+	@echo -n "  • Installing $(APP_NAME).app to /Applications... "
+	@rm -rf "/Applications/$(APP_NAME).app"
+	@cp -R "$(PROJECT_DIR)/build/bin/$(APP_NAME).app" /Applications/
+	@echo "DONE"
+	@$(MAKE) -s install-cli
+	@echo ""
+	@echo "🎉 $(APP_NAME) v$(VERSION) installed successfully."
