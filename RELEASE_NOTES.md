@@ -1,5 +1,24 @@
 # Release Notes
 
+## v0.4.0 (Feb 2026)
+
+**Focus:** GUI Visual Overhaul & Brand Identity.
+
+### Visual & Brand Updates
+*   **Integrated Brand Identity:** Extracted a custom color palette (`#290137`) from the project logo to create a cohesive, professional dark theme across the entire application.
+*   **Unified Branded Controls:** Integrated the small Varys logo directly into the settings gear icon, featuring a 90-degree rotation animation on hover/active states.
+*   **Immersive "About" UI:** Implemented a new full-screen "About" modal with a high-fidelity brand background (`varys.png`),毛玻璃模糊效果 (Backdrop blur), and direct links to the GitHub repository.
+*   **Simplified Navigation:** Replaced the legacy tab-style navigation with a clean, header-based layout, providing more screen real estate for core tasks.
+*   **UX Stability:** Eliminated layout "jumps" when starting a task by making the headline section static and optimizing vertical spacing.
+*   **Contextual Versioning:** Moved the version badge from the global footer into the System Logs console for a more integrated, tidy look.
+
+### Engineering & DX
+*   **Quiet Build System:** Optimized the `Makefile` to suppress verbose build logs from Wails and Go. Installation now features a clean progress-based output with a success summary.
+*   **Window Optimization:** Updated default window dimensions to 1024x768 and synced the initial background color to prevent flicker during app launch.
+*   **Code Quality:** Cleaned up unused imports and refactored navigation state management in `App.tsx`.
+
+---
+
 ## v0.3.8 (Jan 2026)
 
 **Focus:** User Control & Aesthetics.
@@ -97,5 +116,3 @@
 ### Improvements
 *   **Storage Logic:** Updated storage manager to preserve original file extensions, ensuring videos are correctly embedded in Obsidian notes (`![[video.mp4]]`).
 *   **Dependencies:** Backend now supports generic media download and processing.
-
----
