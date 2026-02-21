@@ -27,8 +27,7 @@ Please include:
 
 ## Response Process
 
-- Initial triage response target: within 72 hours.
-- Status updates target: every 7 days until resolution.
-- Confirmed issues will be fixed in a new patch release as soon as practical.
-- Reporters will be credited in release notes unless they request anonymity.
-
+- This is a personal, non-commercial project maintained in spare time.
+- I cannot guarantee response times, regular status updates, or a fixed remediation schedule.
+- Valid reports will be reviewed and addressed on a best-effort basis.
+- If a fix is made, it will be included in a future release when available.
