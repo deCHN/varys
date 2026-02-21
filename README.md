@@ -61,13 +61,40 @@ Varys orchestrates a stack of industry-leading local intelligence tools:
    ```bash
    make install
    ```
-   This command compiles the application and installs it into your `/Applications` folder.
+   This command compiles both the **Desktop GUI** and the **Standalone CLI**, installing the application into your `/Applications` folder and the CLI into your system path.
 
 ## Usage
 
+Varys can be operated through its modern Graphical User Interface or directly from the terminal.
+
+### 1. Desktop GUI
+
+The GUI provides a visual experience with real-time logs and live AI analysis streaming.
+
 1. **Initial Setup**: Open the **Settings** tab to configure your Obsidian Vault path and verify that system dependencies are detected.
 2. **Process Content**: Paste a video URL into the dashboard, select between **Audio** or **Video** mode, and click **Process**.
-3. **Review**: Monitor real-time logs and AI analysis. Once the task is complete, the note will appear immediately in your Obsidian Vault.
+3. **Review**: Watch real-time logs and AI analysis. Once the task is complete, the note will appear immediately in your Obsidian Vault.
+
+### 2. Command Line Interface (CLI)
+
+The CLI (`varys-cli`) is ideal for automation and power users who prefer the terminal.
+
+- **Basic Usage**:
+  ```bash
+  varys-cli "https://www.youtube.com/watch?v=..."
+  ```
+- **Download Video** (instead of audio only):
+  ```bash
+  varys-cli -v "https://www.youtube.com/watch?v=..."
+  ```
+- **Override AI Provider or Model**:
+  ```bash
+  varys-cli --ai-provider openai --model gpt-4o "https://www.youtube.com/watch?v=..."
+  ```
+- **List all options**:
+  ```bash
+  varys-cli --help
+  ```
 
 ## Roadmap
 
