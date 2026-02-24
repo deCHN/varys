@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { GetStartupDiagnostics, OpenOllamaModelLibrary, ReadClipboardText, SelectModelPath, SelectVaultPath, StartOllamaService, StopOllamaService, UpdateModelPath, UpdateVaultPath } from '../wailsjs/go/main/App';
-import { UpdateOpenAIKey } from '../wailsjs/go/main/App';
-import { main } from '../wailsjs/go/models';
+import { GetStartupDiagnostics, OpenOllamaModelLibrary, ReadClipboardText, SelectModelPath, SelectVaultPath, StartOllamaService, StopOllamaService, UpdateModelPath, UpdateVaultPath } from '../wailsjs/go/app/App';
+import { UpdateOpenAIKey } from '../wailsjs/go/app/App';
+import { app } from '../wailsjs/go/models';
 import Dashboard from './Dashboard';
 import Settings from './Settings';
 import StartupHealthWizard from './components/StartupHealthWizard';
 import UpdateNotifier from './components/UpdateNotifier';
 import logo from './assets/images/varys_logo.png';
 import varysBg from './assets/images/varys.png';
-import { GetAppVersion } from '../wailsjs/go/main/App';
+import { GetAppVersion } from '../wailsjs/go/app/App';
 import './App.css';
 
 function App() {
     const [view, setView] = useState<'dashboard' | 'settings'>('dashboard');
-    const [diagnostics, setDiagnostics] = useState<main.StartupDiagnostics | null>(null);
+    const [diagnostics, setDiagnostics] = useState<app.StartupDiagnostics | null>(null);
     const [wizardOpen, setWizardOpen] = useState(false);
     const [version, setVersion] = useState<string>('');
     const [aboutOpen, setAboutOpen] = useState(false);

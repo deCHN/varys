@@ -2,11 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { useTaskRunner } from './hooks/useTaskRunner';
 import LogConsole from './components/LogConsole';
 import AnalysisViewer from './components/AnalysisViewer';
-import { GetStartupDiagnostics } from '../wailsjs/go/main/App';
-import { main } from '../wailsjs/go/models';
+import { GetStartupDiagnostics } from '../wailsjs/go/app/App';
+import { app } from '../wailsjs/go/models';
 
 interface DashboardProps {
-    onPreflightFailed?: (diag: main.StartupDiagnostics) => void;
+    onPreflightFailed?: (diag: app.StartupDiagnostics) => void;
     version?: string;
     onAboutClick?: () => void;
 }
