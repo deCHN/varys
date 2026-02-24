@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics, LocateConfigFile, StartOllamaService } from "../wailsjs/go/main/App";
-import { main } from "../wailsjs/go/models";
+import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics, LocateConfigFile, StartOllamaService, StopOllamaService } from "../wailsjs/go/app/App";
+import { app } from "../wailsjs/go/models";
 import HealthStatusBadge from "./components/health/HealthStatusBadge";
 import HealthItemRow from "./components/health/HealthItemRow";
 
@@ -36,7 +36,7 @@ export default function Settings(props: SettingsProps) {
         openai_model: 'gpt-4o',
         openai_key: ''
     });
-    const [diagnostics, setDiagnostics] = useState<main.StartupDiagnostics | null>(null);
+    const [diagnostics, setDiagnostics] = useState<app.StartupDiagnostics | null>(null);
     const [aiModels, setAIModels] = useState<string[]>([]);
     const [configPath, setConfigPath] = useState<string>('');
     const [version, setVersion] = useState<string>('');
@@ -158,7 +158,12 @@ Format: Return ONLY a valid JSON object with the following structure:
 
     const handleFix = async (id: string) => {
         if (id === 'ollama') {
-            await StartOllamaService();
+            const item = diagnostics?.items.find(i => i.id === 'ollama');
+            if (item?.status === 'ok') {
+                await StopOllamaService();
+            } else {
+                await StartOllamaService();
+            }
             refreshDiagnostics();
         }
     };

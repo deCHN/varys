@@ -99,16 +99,16 @@ describe('App Component', () => {
         });
     });
 
-    it('renders the correct title and removes logo', async () => {
+    it('renders the correct title and navigation', async () => {
         render(<App />);
 
         // Use findBy to wait for initial render and background updates to settle
-        const tabElement = await screen.findByText('Task');
-        expect(tabElement).toBeInTheDocument();
+        const settingsButton = await screen.findByTitle('Settings');
+        expect(settingsButton).toBeInTheDocument();
 
-        // Check Logo is gone (by alt text)
-        const logo = screen.queryByAltText('logo');
-        expect(logo).not.toBeInTheDocument();
+        // Check Logo is present in the header (by alt text)
+        const logo = screen.getByAltText('Logo');
+        expect(logo).toBeInTheDocument();
     });
 
     it('renders the input and process button correctly', async () => {
