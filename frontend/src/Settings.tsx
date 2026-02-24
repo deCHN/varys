@@ -20,7 +20,7 @@ interface Config {
 interface SettingsProps {
     isActive?: boolean;
     onSaved?: () => void;
-    onOpenDependencyHealth?: () => Promise<void> | void;
+    onAboutClick?: () => void;
 }
 
 export default function Settings(props: SettingsProps) {
@@ -42,6 +42,9 @@ export default function Settings(props: SettingsProps) {
     const [version, setVersion] = useState<string>('');
     const [status, setStatus] = useState<{msg: string, type: 'success' | 'error' | ''}>({msg: '', type: ''});
     const systemCheckRef = useRef<HTMLDivElement>(null);
+    const displayVersion = version
+        ? (version.toLowerCase().startsWith('v') ? version : `v${version}`)
+        : '';
 
     const defaultPrompt = `You are an expert content analyst.
 Task: Analyze the following text and provide a structured analysis in [Target Language].
@@ -367,9 +370,16 @@ Format: Return ONLY a valid JSON object with the following structure:
                 )}
             </div>
 
-            <div className="mt-8 text-center text-[10px] text-slate-600 font-bold uppercase tracking-widest">
-                Varys {version}
-            </div>
+            {displayVersion && (
+                <div className="mt-8 text-center">
+                    <button
+                        onClick={props.onAboutClick}
+                        className="text-[10px] text-slate-600 hover:text-varys-primary font-bold uppercase tracking-widest transition-colors bg-slate-900/40 backdrop-blur-sm px-2 py-1 rounded border border-white/5"
+                    >
+                        Varys {displayVersion}
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

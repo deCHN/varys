@@ -3,10 +3,9 @@ import { useTaskRunner } from './hooks/useTaskRunner';
 import LogConsole from './components/LogConsole';
 import AnalysisViewer from './components/AnalysisViewer';
 import { GetStartupDiagnostics } from '../wailsjs/go/app/App';
-import { app } from '../wailsjs/go/models';
 
 interface DashboardProps {
-    onPreflightFailed?: (diag: app.StartupDiagnostics) => void;
+    onPreflightFailed?: () => void;
     version?: string;
     onAboutClick?: () => void;
 }
@@ -37,7 +36,7 @@ export default function Dashboard(props: DashboardProps) {
             try {
                 const diag = await GetStartupDiagnostics();
                 if (!diag.ready) {
-                    props.onPreflightFailed?.(diag);
+                    props.onPreflightFailed?.();
                     return;
                 }
             } catch (err) {

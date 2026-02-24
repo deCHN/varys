@@ -8,6 +8,9 @@ interface LogConsoleProps {
 
 export default function LogConsole({ logs, version, onAboutClick }: LogConsoleProps) {
     const logEndRef = useRef<HTMLDivElement>(null);
+    const displayVersion = version
+        ? (version.toLowerCase().startsWith('v') ? version : `v${version}`)
+        : '';
 
     useEffect(() => {
         logEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -49,7 +52,7 @@ export default function LogConsole({ logs, version, onAboutClick }: LogConsolePr
                     onClick={onAboutClick}
                     className="absolute bottom-2 right-3 text-[9px] font-bold text-slate-600/50 hover:text-varys-primary transition-colors tracking-widest uppercase z-20 bg-slate-900/40 backdrop-blur-sm px-1.5 py-0.5 rounded border border-white/5"
                 >
-                    v{version}
+                    {displayVersion}
                 </button>
             )}
         </div>

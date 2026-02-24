@@ -27,14 +27,7 @@ export default function HealthItemRow(props: HealthItemRowProps) {
     return (
         <div className="bg-slate-800/50 border border-slate-800 p-3 rounded-lg flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                    <div className="text-slate-300 truncate font-medium">{item.name}</div>
-                    {!isOllama && <HealthStatusBadge status={item.status} isBlocker={item.is_blocker} compact />}
-                </div>
-                <div className="text-[10px] text-slate-500 truncate mt-0.5 uppercase tracking-wider font-semibold opacity-70">
-                    ID: {item.id}
-                    {item.is_blocker ? " · blocker" : ""}
-                </div>
+                <div className="text-slate-300 truncate font-medium">{item.name}</div>
                 {item.status !== "ok" && item.fix_suggestion && (
                     <div className="text-[10px] text-slate-400 mt-1 italic leading-tight">
                         {item.fix_suggestion}
