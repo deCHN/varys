@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { SubmitTask, CancelTask } from "../../wailsjs/go/main/App";
+import { SubmitTask, CancelTask } from "../../wailsjs/go/app/App";
 import { EventsOn } from "../../wailsjs/runtime";
 
 export function useTaskRunner() {

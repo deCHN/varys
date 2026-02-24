@@ -1,39 +1,21 @@
-import { useCallback, useEffect, useState } from 'react';
-import { GetStartupDiagnostics, OpenOllamaModelLibrary, ReadClipboardText, SelectModelPath, SelectVaultPath, StartOllamaService, StopOllamaService, UpdateModelPath, UpdateVaultPath } from '../wailsjs/go/main/App';
-import { UpdateOpenAIKey } from '../wailsjs/go/main/App';
-import { main } from '../wailsjs/go/models';
+import { useEffect, useState } from 'react';
 import Dashboard from './Dashboard';
 import Settings from './Settings';
-import StartupHealthWizard from './components/StartupHealthWizard';
 import UpdateNotifier from './components/UpdateNotifier';
 import logo from './assets/images/varys_logo.png';
 import varysBg from './assets/images/varys.png';
-import { GetAppVersion } from '../wailsjs/go/main/App';
+import { GetAppVersion } from '../wailsjs/go/app/App';
+import { BrowserOpenURL } from '../wailsjs/runtime';
 import './App.css';
 
 function App() {
     const [view, setView] = useState<'dashboard' | 'settings'>('dashboard');
-    const [diagnostics, setDiagnostics] = useState<main.StartupDiagnostics | null>(null);
-    const [wizardOpen, setWizardOpen] = useState(false);
     const [version, setVersion] = useState<string>('');
     const [aboutOpen, setAboutOpen] = useState(false);
 
-    const refreshDiagnostics = useCallback(async () => {
-        try {
-            const result = await GetStartupDiagnostics();
-            setDiagnostics(result);
-            if (!result.ready) {
-                setWizardOpen(true);
-            }
-        } catch (err) {
-            console.error('Failed to load startup diagnostics', err);
-        }
-    }, []);
-
     useEffect(() => {
-        refreshDiagnostics();
         GetAppVersion().then(setVersion).catch(console.error);
-    }, [refreshDiagnostics]);
+    }, []);
 
     return (
         <div className="flex flex-col h-screen bg-varys-bg text-slate-100 font-sans selection:bg-varys-primary/30 relative">
@@ -73,9 +55,11 @@ function App() {
             <main className="flex-1 overflow-hidden flex flex-col relative">
                 <div className={`absolute inset-0 overflow-y-auto ${view === 'dashboard' ? 'block' : 'hidden'}`}>
                     <Dashboard
-                        onPreflightFailed={(diag) => {
-                            setDiagnostics(diag);
-                            setWizardOpen(true);
+                        onPreflightFailed={() => {
+                            setView('settings');
+                            setTimeout(() => {
+                                window.dispatchEvent(new Event('open-system-check'));
+                            }, 60);
                         }}
                         version={version}
                         onAboutClick={() => setAboutOpen(true)}
@@ -85,10 +69,7 @@ function App() {
                     <Settings
                         isActive={view === 'settings'}
                         onSaved={() => setView('dashboard')}
-                        onOpenDependencyHealth={async () => {
-                            await refreshDiagnostics();
-                            setWizardOpen(true);
-                        }}
+                        onAboutClick={() => setAboutOpen(true)}
                     />
                 </div>
             </main>
@@ -125,19 +106,17 @@ function App() {
                                 
                                 <div className="space-y-6 max-w-xs">
                                     <p className="text-slate-100 text-sm leading-relaxed font-bold drop-shadow-lg">
-                                        Private, offline multimedia intelligence for your second brain.
+                                        Your Personal Agentic Knowledge Ingestion Engine
                                     </p>
                                     
                                     <div className="flex flex-col items-center gap-4">
-                                        <a 
-                                            href="https://github.com/dechn/varys" 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-2 transition-colors font-black bg-black/40 px-4 py-2 rounded-full border border-white/5"
+                                        <button
+                                            onClick={() => BrowserOpenURL("https://github.com/deCHN/varys")}
+                                            className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-2 transition-colors font-black bg-black/40 px-4 py-2 rounded-full border border-white/5 cursor-pointer pointer-events-auto"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
                                             GITHUB
-                                        </a>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -153,80 +132,6 @@ function App() {
                 </div>
             )}
 
-            <StartupHealthWizard
-                diagnostics={diagnostics}
-                open={wizardOpen}
-                onClose={() => setWizardOpen(false)}
-                onRecheck={refreshDiagnostics}
-                onStartOllama={async () => {
-                    try {
-                        await StartOllamaService();
-                    } catch (err) {
-                        console.error('Failed to start ollama service', err);
-                    }
-                    await refreshDiagnostics();
-                }}
-                onStopOllama={async () => {
-                    try {
-                        await StopOllamaService();
-                    } catch (err) {
-                        console.error('Failed to stop ollama service', err);
-                    }
-                    await refreshDiagnostics();
-                }}
-                onOpenSettings={() => {
-                    setView('settings');
-                    setWizardOpen(false);
-                    setTimeout(() => {
-                        window.dispatchEvent(new Event('open-system-check'));
-                    }, 60);
-                }}
-                onOpenModelLibrary={async () => {
-                    try {
-                        await OpenOllamaModelLibrary();
-                    } catch (err) {
-                        console.error('Failed to open ollama model library', err);
-                    }
-                }}
-                onBrowseVaultPath={async () => {
-                    try {
-                        const selected = await SelectVaultPath();
-                        if (!selected) {
-                            return;
-                        }
-                        await UpdateVaultPath(selected);
-                    } catch (err) {
-                        console.error('Failed to update vault path', err);
-                    }
-                    await refreshDiagnostics();
-                }}
-                onBrowseModelPath={async () => {
-                    try {
-                        const selected = await SelectModelPath();
-                        if (!selected) {
-                            return;
-                        }
-                        await UpdateModelPath(selected);
-                    } catch (err) {
-                        console.error('Failed to update model path', err);
-                    }
-                    await refreshDiagnostics();
-                }}
-                onPasteOpenAIKey={async (inputKey?: string) => {
-                    try {
-                        const key = (inputKey ?? (await ReadClipboardText())).trim();
-                        if (!key) {
-                            return "";
-                        }
-                        await UpdateOpenAIKey(key);
-                        await refreshDiagnostics();
-                        return key;
-                    } catch (err) {
-                        console.error('Failed to update OpenAI key', err);
-                        return "";
-                    }
-                }}
-            />
         </div>
     )
 }

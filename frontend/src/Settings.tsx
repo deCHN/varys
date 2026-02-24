@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics } from "../wailsjs/go/main/App";
-import { main } from "../wailsjs/go/models";
+import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics, LocateConfigFile, StartOllamaService, StopOllamaService } from "../wailsjs/go/app/App";
+import { app } from "../wailsjs/go/models";
 import HealthStatusBadge from "./components/health/HealthStatusBadge";
 import HealthItemRow from "./components/health/HealthItemRow";
 
@@ -20,7 +20,7 @@ interface Config {
 interface SettingsProps {
     isActive?: boolean;
     onSaved?: () => void;
-    onOpenDependencyHealth?: () => Promise<void> | void;
+    onAboutClick?: () => void;
 }
 
 export default function Settings(props: SettingsProps) {
@@ -36,12 +36,15 @@ export default function Settings(props: SettingsProps) {
         openai_model: 'gpt-4o',
         openai_key: ''
     });
-    const [diagnostics, setDiagnostics] = useState<main.StartupDiagnostics | null>(null);
+    const [diagnostics, setDiagnostics] = useState<app.StartupDiagnostics | null>(null);
     const [aiModels, setAIModels] = useState<string[]>([]);
     const [configPath, setConfigPath] = useState<string>('');
     const [version, setVersion] = useState<string>('');
     const [status, setStatus] = useState<{msg: string, type: 'success' | 'error' | ''}>({msg: '', type: ''});
     const systemCheckRef = useRef<HTMLDivElement>(null);
+    const displayVersion = version
+        ? (version.toLowerCase().startsWith('v') ? version : `v${version}`)
+        : '';
 
     const defaultPrompt = `You are an expert content analyst.
 Task: Analyze the following text and provide a structured analysis in [Target Language].
@@ -156,6 +159,18 @@ Format: Return ONLY a valid JSON object with the following structure:
         setCfg({...cfg, custom_prompt: ''});
     };
 
+    const handleFix = async (id: string) => {
+        if (id === 'ollama') {
+            const item = diagnostics?.items.find(i => i.id === 'ollama');
+            if (item?.status === 'ok') {
+                await StopOllamaService();
+            } else {
+                await StartOllamaService();
+            }
+            refreshDiagnostics();
+        }
+    };
+
     return (
         <div className="max-w-2xl mx-auto p-8 w-full">
 
@@ -169,7 +184,7 @@ Format: Return ONLY a valid JSON object with the following structure:
                             <input
                                 className="flex-1 bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 shadow-inner"
                                 value={cfg.vault_path}
-                                readOnly
+                                onChange={e => setCfg({...cfg, vault_path: e.target.value})}
                             />
                             <button
                                 className="bg-varys-muted hover:bg-varys-muted/80 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-varys-border/10 shadow-lg"
@@ -186,7 +201,7 @@ Format: Return ONLY a valid JSON object with the following structure:
                             <input
                                 className="flex-1 bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 shadow-inner"
                                 value={cfg.model_path}
-                                readOnly
+                                onChange={e => setCfg({...cfg, model_path: e.target.value})}
                             />
                             <button
                                 className="bg-varys-muted hover:bg-varys-muted/80 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-varys-border/10 shadow-lg"
@@ -225,7 +240,7 @@ Format: Return ONLY a valid JSON object with the following structure:
                                 placeholder="sk-..."
                             />
                             <p className="mt-1 text-[10px] text-slate-500 italic">
-                                Your API Key is stored locally in <code>config.json</code>.
+                                Your API Key is stored locally in <code className="cursor-pointer hover:text-varys-secondary transition-colors underline" onClick={() => LocateConfigFile()}>config.json</code>.
                             </p>
                         </div>
                     )}
@@ -335,7 +350,9 @@ Format: Return ONLY a valid JSON object with the following structure:
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 text-sm">
-                    {(diagnostics?.items || []).map((item) => <HealthItemRow key={item.id} item={item} />)}
+                    {(diagnostics?.items || []).map((item) => (
+                        <HealthItemRow key={item.id} item={item} onFix={handleFix} />
+                    ))}
                 </div>
             </div>
 
@@ -353,9 +370,16 @@ Format: Return ONLY a valid JSON object with the following structure:
                 )}
             </div>
 
-            <div className="mt-8 text-center text-[10px] text-slate-600 font-bold uppercase tracking-widest">
-                Varys {version}
-            </div>
+            {displayVersion && (
+                <div className="mt-8 text-center">
+                    <button
+                        onClick={props.onAboutClick}
+                        className="text-[10px] text-slate-600 hover:text-varys-primary font-bold uppercase tracking-widest transition-colors bg-slate-900/40 backdrop-blur-sm px-2 py-1 rounded border border-white/5"
+                    >
+                        Varys {displayVersion}
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

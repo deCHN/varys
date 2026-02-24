@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckYtDlpUpdate } from '../../wailsjs/go/main/App';
+import { CheckYtDlpUpdate } from '../../wailsjs/go/app/App';
 import { BrowserOpenURL } from '../../wailsjs/runtime';
 
 interface UpdateInfo {

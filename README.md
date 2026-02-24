@@ -5,7 +5,7 @@
 <h1 align="center">Varys</h1>
 
 <p align="center">
-  <strong>Your Personal Knowledge Intelligence Agent</strong>
+  <strong>Your Personal Agentic Knowledge Ingestion Engine</strong>
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 
 ---
 
-Varys is a local-first desktop application designed to automate the capture, transcription, and analysis of video and audio content. It seamlessly transforms multimedia into structured insights and integrates them directly into your Obsidian Vault, building a high-fidelity personal knowledge base with zero cloud dependency.
+Varys is a local-first desktop and CLI application designed to automate the capture, transcription, and analysis of video and audio content. It seamlessly transforms multimedia into structured insights and integrates them directly into your Obsidian Vault, building a high-fidelity personal knowledge base with zero cloud dependency.
 
 ## Project Goal
 

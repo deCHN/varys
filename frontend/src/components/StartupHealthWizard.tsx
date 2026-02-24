@@ -1,9 +1,9 @@
-import { main } from "../../wailsjs/go/models";
+import { app } from "../../wailsjs/go/models";
 import { useEffect, useState } from "react";
 import HealthStatusBadge from "./health/HealthStatusBadge";
 
 interface StartupHealthWizardProps {
-    diagnostics: main.StartupDiagnostics | null;
+    diagnostics: app.StartupDiagnostics | null;
     open: boolean;
     onClose: () => void;
     onRecheck: () => Promise<void>;

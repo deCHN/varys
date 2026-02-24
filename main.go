@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Varys/backend/app"
 	"embed"
 
 	"github.com/wailsapp/wails/v2"
@@ -13,7 +14,7 @@ var assets embed.FS
 
 func main() {
 	// Create an instance of the app structure
-	app := NewApp()
+	application := app.NewApp()
 
 	// Create application with options
 	err := wails.Run(&options.App{
@@ -24,9 +25,9 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 41, G: 1, B: 55, A: 1}, // Match #290137
-		OnStartup:        app.startup,
+		OnStartup:        application.Startup,
 		Bind: []interface{}{
-			app,
+			application,
 		},
 	})
 

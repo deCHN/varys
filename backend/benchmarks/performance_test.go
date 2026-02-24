@@ -1,9 +1,13 @@
+//go:build integration
+
 package benchmarks
 
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -12,7 +16,40 @@ import (
 	"Varys/backend/translation"
 )
 
+func checkOllamaRunning() bool {
+	client := http.Client{Timeout: 1 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:11434/api/tags")
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode == 200
+}
+
+func ensureOllama(t *testing.T) {
+	if checkOllamaRunning() {
+		return
+	}
+
+	t.Log("Ollama not running. Attempting to start 'ollama serve'...")
+	cmd := exec.Command("ollama", "serve")
+	if err := cmd.Start(); err != nil {
+		t.Skipf("Ollama is not running and failed to start: %v", err)
+	}
+
+	// Wait for it to be ready
+	for i := 0; i < 10; i++ {
+		time.Sleep(1 * time.Second)
+		if checkOllamaRunning() {
+			t.Log("Ollama started successfully.")
+			return
+		}
+	}
+	t.Skip("Ollama started but not responding to health check.")
+}
+
 func TestPerformanceBaseline(t *testing.T) {
+	ensureOllama(t)
 	// Setup
 
 	// Test Cases

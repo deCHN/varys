@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"Varys/backend/analyzer"
@@ -45,9 +45,9 @@ func NewApp() *App {
 	return &App{}
 }
 
-// startup is called when the app starts. The context is saved
+// Startup is called when the app starts. The context is saved
 // so we can call the runtime methods
-func (a *App) startup(ctx context.Context) {
+func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 
 	// 1. Dependencies
@@ -268,6 +268,17 @@ func (a *App) GetConfigPath() (string, error) {
 	return a.cfgManager.GetConfigPath(), nil
 }
 
+// LocateConfigFile opens the file explorer and selects the config file.
+func (a *App) LocateConfigFile() error {
+	path, err := a.GetConfigPath()
+	if err != nil {
+		return err
+	}
+
+	// For macOS (Darwin)
+	return exec.Command("open", "-R", path).Run()
+}
+
 type DependencyStatus struct {
 	YtDlp   bool `json:"yt_dlp"`
 	Ffmpeg  bool `json:"ffmpeg"`
@@ -372,7 +383,7 @@ func (a *App) GetStartupDiagnostics() StartupDiagnostics {
 		depStatus.YtDlp,
 		[]string{"download"},
 		true,
-		"请安装 yt-dlp，并确认其在 PATH 中可执行。",
+		"Install yt-dlp and ensure it is executable from PATH.",
 		[]string{"brew install yt-dlp"},
 	))
 
@@ -382,7 +393,7 @@ func (a *App) GetStartupDiagnostics() StartupDiagnostics {
 		depStatus.Ffmpeg,
 		[]string{"download", "transcribe"},
 		true,
-		"请安装 ffmpeg，用于音频转换。",
+		"Install ffmpeg for audio conversion.",
 		[]string{"brew install ffmpeg"},
 	))
 
@@ -392,7 +403,7 @@ func (a *App) GetStartupDiagnostics() StartupDiagnostics {
 		depStatus.Whisper,
 		[]string{"transcribe"},
 		true,
-		"请安装 whisper.cpp 可执行文件，并确保命令可在 PATH 中找到。",
+		"Install whisper.cpp and ensure the binary is available in PATH.",
 		[]string{"brew install whisper-cpp"},
 	))
 
@@ -410,8 +421,8 @@ func (a *App) GetStartupDiagnostics() StartupDiagnostics {
 		[]string{"transcribe"},
 		true,
 		modelPath,
-		"请在 Settings 中选择可访问的 Whisper 模型文件（.bin）。",
-		[]string{"在 Settings 页面点击 Browse 选择 Whisper 模型文件"},
+		"Select an accessible Whisper model file (.bin) in Settings.",
+		[]string{"In Settings, click Browse to select a Whisper model file."},
 	))
 
 	ollamaBlocker := provider == "ollama"
@@ -427,8 +438,8 @@ func (a *App) GetStartupDiagnostics() StartupDiagnostics {
 		[]string{"export"},
 		true,
 		vaultPath,
-		"请在 Settings 中选择 Obsidian Vault 目录。",
-		[]string{"在 Settings 页面点击 Browse 选择 Obsidian Vault"},
+		"Select your Obsidian Vault directory in Settings.",
+		[]string{"In Settings, click Browse to select your Obsidian Vault."},
 	))
 
 	openAIKey := strings.TrimSpace(cfg.OpenAIKey)
@@ -440,8 +451,8 @@ func (a *App) GetStartupDiagnostics() StartupDiagnostics {
 		[]string{"analyze"},
 		openAIBlocker,
 		maskSecretForDisplay(openAIKey),
-		"当前 AI Provider 使用 openai。请在 Settings 填写 OpenAI API Key。",
-		[]string{"在 Settings 页面填写 OpenAI API Key"},
+		"The current AI provider is OpenAI. Enter your OpenAI API key in Settings.",
+		[]string{"Enter your OpenAI API key in Settings."},
 	))
 
 	diag.Ready = len(diag.Blockers) == 0
@@ -494,7 +505,7 @@ func buildConfigItem(id, name string, ok bool, requiredFor []string, blockerIfBa
 func buildOllamaItem(installed bool, running bool, blockerIfBad bool) DiagnosticItem {
 	item := DiagnosticItem{
 		ID:          "ollama",
-		Name:        "ollama",
+		Name:        "Ollama",
 		RequiredFor: []string{"analyze"},
 		CanAutoFix:  false,
 	}
@@ -502,7 +513,7 @@ func buildOllamaItem(installed bool, running bool, blockerIfBad bool) Diagnostic
 	if !installed {
 		item.Status = "missing"
 		item.IsBlocker = blockerIfBad
-		item.FixSuggestion = "当前 AI Provider 使用 ollama。请先安装 ollama。"
+		item.FixSuggestion = "The current AI provider is Ollama. Install Ollama first."
 		item.FixCommands = []string{"brew install ollama"}
 		return item
 	}
@@ -511,7 +522,7 @@ func buildOllamaItem(installed bool, running bool, blockerIfBad bool) Diagnostic
 	if running {
 		item.Status = "ok"
 		item.IsBlocker = false
-		item.FixSuggestion = "ollama 服务运行正常。"
+		item.FixSuggestion = "Ollama service is running normally."
 		item.FixCommands = []string{}
 		return item
 	}
@@ -519,7 +530,7 @@ func buildOllamaItem(installed bool, running bool, blockerIfBad bool) Diagnostic
 	item.Status = "misconfigured"
 	item.IsBlocker = blockerIfBad
 	item.CanAutoFix = true
-	item.FixSuggestion = "ollama 已安装但服务未运行。请启动服务。"
+	item.FixSuggestion = "Ollama is installed but not running. Start the service."
 	item.FixCommands = []string{"ollama serve"}
 	return item
 }
@@ -540,13 +551,13 @@ func buildOllamaModelsItem(ollamaRunning bool, blockerIfBad bool) DiagnosticItem
 	if hasModels {
 		item.Status = "ok"
 		item.IsBlocker = false
-		item.FixSuggestion = "已检测到可用 Ollama models。"
+		item.FixSuggestion = "Available Ollama models were detected."
 		return item
 	}
 
 	item.Status = "misconfigured"
 	item.IsBlocker = blockerIfBad
-	item.FixSuggestion = "未在 Ollama models 路径下检测到任何 model。请先下载 model。"
+	item.FixSuggestion = "No models were detected in the Ollama models path. Pull a model first."
 	item.FixCommands = []string{
 		"ollama pull qwen3:8b",
 		"https://ollama.com/library",
