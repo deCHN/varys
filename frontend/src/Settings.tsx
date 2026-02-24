@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics, LocateConfigFile } from "../wailsjs/go/main/App";
+import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics, LocateConfigFile, StartOllamaService } from "../wailsjs/go/main/App";
 import { main } from "../wailsjs/go/models";
 import HealthStatusBadge from "./components/health/HealthStatusBadge";
 import HealthItemRow from "./components/health/HealthItemRow";
@@ -154,6 +154,13 @@ Format: Return ONLY a valid JSON object with the following structure:
 
     const resetPrompt = () => {
         setCfg({...cfg, custom_prompt: ''});
+    };
+
+    const handleFix = async (id: string) => {
+        if (id === 'ollama') {
+            await StartOllamaService();
+            refreshDiagnostics();
+        }
     };
 
     return (
@@ -335,7 +342,9 @@ Format: Return ONLY a valid JSON object with the following structure:
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 text-sm">
-                    {(diagnostics?.items || []).map((item) => <HealthItemRow key={item.id} item={item} />)}
+                    {(diagnostics?.items || []).map((item) => (
+                        <HealthItemRow key={item.id} item={item} onFix={handleFix} />
+                    ))}
                 </div>
             </div>
 
