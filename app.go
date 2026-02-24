@@ -268,6 +268,17 @@ func (a *App) GetConfigPath() (string, error) {
 	return a.cfgManager.GetConfigPath(), nil
 }
 
+// LocateConfigFile opens the file explorer and selects the config file.
+func (a *App) LocateConfigFile() error {
+	path, err := a.GetConfigPath()
+	if err != nil {
+		return err
+	}
+
+	// For macOS (Darwin)
+	return exec.Command("open", "-R", path).Run()
+}
+
 type DependencyStatus struct {
 	YtDlp   bool `json:"yt_dlp"`
 	Ffmpeg  bool `json:"ffmpeg"`

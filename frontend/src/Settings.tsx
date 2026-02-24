@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics } from "../wailsjs/go/main/App";
+import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics, LocateConfigFile } from "../wailsjs/go/main/App";
 import { main } from "../wailsjs/go/models";
 import HealthStatusBadge from "./components/health/HealthStatusBadge";
 import HealthItemRow from "./components/health/HealthItemRow";
@@ -169,7 +169,7 @@ Format: Return ONLY a valid JSON object with the following structure:
                             <input
                                 className="flex-1 bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 shadow-inner"
                                 value={cfg.vault_path}
-                                readOnly
+                                onChange={e => setCfg({...cfg, vault_path: e.target.value})}
                             />
                             <button
                                 className="bg-varys-muted hover:bg-varys-muted/80 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-varys-border/10 shadow-lg"
@@ -186,7 +186,7 @@ Format: Return ONLY a valid JSON object with the following structure:
                             <input
                                 className="flex-1 bg-varys-surface border border-varys-border/20 text-slate-300 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-varys-primary/50 shadow-inner"
                                 value={cfg.model_path}
-                                readOnly
+                                onChange={e => setCfg({...cfg, model_path: e.target.value})}
                             />
                             <button
                                 className="bg-varys-muted hover:bg-varys-muted/80 text-slate-200 px-4 py-2 rounded-lg text-sm transition-colors border border-varys-border/10 shadow-lg"
@@ -225,7 +225,7 @@ Format: Return ONLY a valid JSON object with the following structure:
                                 placeholder="sk-..."
                             />
                             <p className="mt-1 text-[10px] text-slate-500 italic">
-                                Your API Key is stored locally in <code>config.json</code>.
+                                Your API Key is stored locally in <code className="cursor-pointer hover:text-varys-secondary transition-colors underline" onClick={() => LocateConfigFile()}>config.json</code>.
                             </p>
                         </div>
                     )}
