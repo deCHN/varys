@@ -1,4 +1,5 @@
-package main
+//go:build integration
+package app
 
 import (
 	"Varys/backend/config"

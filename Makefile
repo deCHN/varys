@@ -14,7 +14,7 @@ NPM := npm
 # App Details
 APP_NAME := Varys
 # Try to extract version, default to 0.0.0 if not found
-VERSION := $(shell grep "version": $(PROJECT_DIR)/wails.json 2>/dev/null | sed 's/.*: "\(.*\)",/\1/' || echo "0.0.0")
+VERSION := $(shell grep '"version":' $(PROJECT_DIR)/wails.json 2>/dev/null | sed -E 's/.*"version": "(.*)".*/\1/' || echo "0.0.0")
 
 # Shell settings
 SHELL := /bin/bash
@@ -90,12 +90,12 @@ test-backend: test-unit test-integration ## Alias for all backend tests
 .PHONY: test-unit
 test-unit: ## Run Go unit tests (excludes benchmarks and integration tests)
 	@echo "Running Unit Tests (Timeout: $(TIMEOUT))..."
-	cd $(PROJECT_DIR) && $(GO) test -v -timeout $(TIMEOUT) $$(go list ./backend/... | grep -vE "benchmarks|tests")
+	cd $(PROJECT_DIR) && $(GO) test -v -timeout $(TIMEOUT) $$(go list ./... | grep -vE "benchmarks|tests/integration")
 
 .PHONY: test-integration
 test-integration: ## Run Go integration tests
 	@echo "Running Integration Tests (Timeout: $(TIMEOUT_INT))..."
-	cd $(PROJECT_DIR) && $(GO) test -v -timeout $(TIMEOUT_INT) ./backend/tests/integration/...
+	cd $(PROJECT_DIR) && $(GO) test -v -timeout $(TIMEOUT_INT) -tags integration ./...
 
 .PHONY: test-benchmark
 test-benchmark: ## Run Go performance benchmarks
