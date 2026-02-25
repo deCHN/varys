@@ -49,9 +49,8 @@ func main() {
 	rootCmd := &cobra.Command{
 		Use:   "varys-cli [URL or local path]",
 		Short: "Varys CLI - Transcribe and analyze audio/video content",
-		Long: `Varys is a local-first tool that extracts audio from URLs or local files, 
-transcribes them using Whisper, and generates structured analysis using LLMs (Ollama/OpenAI).`,
-		Args: cobra.ExactArgs(1),
+		Long:  `Varys is a local-first desktop and CLI application designed to automate the capture, transcription, and analysis of video and audio content.`,
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			url := args[0]
 
@@ -130,8 +129,8 @@ transcribes them using Whisper, and generates structured analysis using LLMs (Ol
 
 	// Define Flags
 	rootCmd.Flags().BoolVarP(&videoOnly, "video", "v", false, "Download full video instead of audio only")
-	rootCmd.Flags().StringVarP(&aiProvider, "ai-provider", "p", "", "AI provider to use (ollama or openai)")
-	rootCmd.Flags().StringVar(&model, "model", "", "LLM model name (e.g. qwen3:8b or gpt-4o)")
+	rootCmd.Flags().StringVarP(&aiProvider, "ai-provider", "p", "", "AI provider to use (ollama or Cloud LLMs)")
+	rootCmd.Flags().StringVar(&model, "model", "", "LLM model name (e.g. dolphin3:8b or )")
 	rootCmd.Flags().StringVar(&translationMod, "translation-model", "", "Model used for translation (e.g. qwen3:0.6b)")
 	rootCmd.Flags().StringVar(&targetLang, "target-lang", "", "Target language for analysis and translation")
 	rootCmd.Flags().IntVar(&contextSize, "context-size", 0, "Context window size in tokens")

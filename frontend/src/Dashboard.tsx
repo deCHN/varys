@@ -14,7 +14,7 @@ export default function Dashboard(props: DashboardProps) {
     const [url, setUrl] = useState('');
     const [downloadVideo, setDownloadVideo] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
-    
+
     const {
         isProcessing,
         logs,
@@ -55,7 +55,7 @@ export default function Dashboard(props: DashboardProps) {
             {/* Hero Section (Always visible to prevent jumps) */}
             <div className="flex flex-col items-center justify-center py-12 animate-in fade-in duration-700">
                 <h2 className="text-3xl font-bold text-white mb-1 tracking-tight">Capture Analyze Transcribe</h2>
-                <p className="text-slate-400 text-base text-center font-medium opacity-80">Private, offline intelligence for your second brain.</p>
+                <p className="text-slate-400 text-base text-center font-medium opacity-80">Your Personal Agentic Knowledge Ingestion Engine</p>
             </div>
 
             {/* Input Section */}
@@ -91,8 +91,8 @@ export default function Dashboard(props: DashboardProps) {
 
                 <button
                     className={`px-6 py-4 rounded-xl font-bold transition-all shadow-xl active:scale-95 flex items-center justify-center w-16 group ${
-                        isProcessing 
-                        ? 'bg-red-500 hover:bg-red-400 text-white shadow-red-900/40' 
+                        isProcessing
+                        ? 'bg-red-500 hover:bg-red-400 text-white shadow-red-900/40'
                         : 'bg-varys-primary hover:bg-varys-primary/80 text-white shadow-varys-primary/30'
                     }`}
                     onClick={handleProcessToggle}

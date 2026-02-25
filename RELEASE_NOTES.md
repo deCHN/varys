@@ -1,5 +1,17 @@
 # Release Notes
 
+## v0.4.1 (Feb 2026)
+
+**Focus:** UX Consistency & CLI Messaging.
+
+### Improvements
+*   **Unified Health UX:** Removed the duplicated startup dependency modal and kept dependency checks in Settings as the single source of truth.
+*   **About Modal Consistency:** Made version badges in both Dashboard and Settings open the same About modal.
+*   **Clickable GitHub CTA:** Ensured the GitHub button in About reliably opens the repository in the default browser.
+*   **CLI Copy Refresh:** Updated CLI help text to reflect desktop+CLI scope and refined AI provider wording.
+
+---
+
 ## v0.4.0 (Feb 2026)
 
 **Focus:** GUI Visual Overhaul & Brand Identity.
