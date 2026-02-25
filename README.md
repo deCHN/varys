@@ -41,6 +41,7 @@ Varys orchestrates a stack of industry-leading local intelligence tools:
 3. **Ollama**: For running high-quality LLMs (e.g., Qwen, Llama) for analysis and translation.
 4. **Wails**: For a lightweight, native desktop experience using Go and React.
 
+
 ## Getting Started
 
 ### Prerequisites
@@ -53,7 +54,7 @@ Varys orchestrates a stack of industry-leading local intelligence tools:
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/varys.git
+   git clone https://github.com/deCHN/varys.git
    cd varys
    ```
 
@@ -70,6 +71,20 @@ Varys can be operated through its modern Graphical User Interface or directly fr
 ### 1. Desktop GUI
 
 The GUI provides a visual experience with real-time logs and live AI analysis streaming.
+
+#### UI Preview
+
+**Main Dashboard**: Paste a supported URL, choose audio or video mode, and monitor processing logs in real time.
+
+<p align="center">
+  <img src="docs/assets/dashboard.png" width="80%" alt="Varys Main Dashboard">
+</p>
+
+**Configuration Panel**: Set your Obsidian vault, Whisper model path, AI provider/model, target language, and analysis prompt.
+
+<p align="center">
+  <img src="docs/assets/config.png" width="80%" alt="Varys Configuration Panel">
+</p>
 
 1. **Initial Setup**: Open the **Settings** tab to configure your Obsidian Vault path and verify that system dependencies are detected.
 2. **Process Content**: Paste a video URL into the dashboard, select between **Audio** or **Video** mode, and click **Process**.
@@ -95,6 +110,9 @@ The CLI (`varys-cli`) is ideal for automation and power users who prefer the ter
   ```bash
   varys-cli --help
   ```
+<p align="center">
+  <img src="docs/assets/cli_demo.gif" width="80%" alt="Varys CLI 20-second demo">
+</p>
 
 ## Roadmap
 
@@ -115,10 +133,8 @@ We welcome contributions to Varys. To contribute:
 
 ## License
 
-Varys is released under the **MIT License**. See the `LICENSE` file for full details.
-
----
+Varys is released under the **MIT License**. See the [LICENSE](./LICENSE) file for full details.
 
 <p align="center">
-  Built with passion for the Personal Knowledge Management community.
+  <img src="frontend/src/assets/images/varys_logo.png" width="35" alt="Varys Logo">
 </p>
