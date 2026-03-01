@@ -80,6 +80,11 @@ func runTask(url string, cmd *cobra.Command) {
 	}
 
 	// Override if flags are provided
+	if v, err := cmd.Flags().GetBool("video"); err == nil && cmd.Flags().Changed("video") {
+		opts.AudioOnly = !v
+	} else if cmd.Flags().Changed("video") {
+		opts.AudioOnly = !videoOnly
+	}
 	if cmd.Flags().Changed("ai-provider") {
 		opts.AIProvider = aiProvider
 	}
