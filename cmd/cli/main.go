@@ -144,6 +144,11 @@ func main() {
 	searchCmd := &cobra.Command{
 		Use:   "search [query]",
 		Short: "Search and ingest content from various platforms",
+		Long: `Search for video, audio, or web content using various providers (like yt-dlp or Tavily).
+An interactive TUI will open to show the results:
+- [Space]: Toggle selection for multiple items (Marked with [x]).
+- [Enter]: Confirm and start processing all selected items.
+- [q/Ctrl+C]: Quit.`,
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			query := args[0]
