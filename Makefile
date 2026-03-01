@@ -133,7 +133,8 @@ build: clean ## Build the production application (macOS .app)
 .PHONY: build-cli
 build-cli: ## Build the standalone CLI binary
 	@echo -n "  • Building $(APP_NAME) v$(VERSION) (CLI)... "
-	@$(GO) build -o build/bin/varys-cli ./cmd/cli/main.go > $(BUILD_LOG) 2>&1 || (echo "FAILED (see $(BUILD_LOG))" && exit 1)
+	@mkdir -p build/bin
+	@$(GO) build -o build/bin/varys-cli ./cmd/cli/ > $(BUILD_LOG) 2>&1 || (echo "FAILED (see $(BUILD_LOG))" && exit 1)
 	@echo "DONE"
 
 .PHONY: install-cli

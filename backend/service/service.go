@@ -4,6 +4,7 @@ import (
 	"Varys/backend/analyzer"
 	"Varys/backend/dependency"
 	"Varys/backend/downloader"
+	"Varys/backend/scraper"
 	"Varys/backend/storage"
 	"Varys/backend/transcriber"
 	"Varys/backend/translation"
@@ -19,11 +20,15 @@ import (
 // CoreService implements the Processor interface.
 type CoreService struct {
 	depManager *dependency.Manager
+	scraper    *scraper.Scraper
 }
 
 // NewCoreService creates a new instance of CoreService.
 func NewCoreService(dm *dependency.Manager) *CoreService {
-	return &CoreService{depManager: dm}
+	return &CoreService{
+		depManager: dm,
+		scraper:    scraper.NewScraper(),
+	}
 }
 
 // ProcessTask runs the full pipeline: download, transcribe, analyze, and save.
@@ -41,8 +46,11 @@ func (s *CoreService) ProcessTask(ctx context.Context, url string, opts Options,
 		logger.Log("Local file detected: " + url)
 	}
 
-	// 1. Get Title and Description
 	var videoTitle, videoDescription string
+	var transcript, sourceLang string
+	var mediaPath string
+	isArticle := false
+
 	dl := downloader.NewDownloader(s.depManager)
 
 	if isLocalFile {
@@ -50,19 +58,25 @@ func (s *CoreService) ProcessTask(ctx context.Context, url string, opts Options,
 		videoDescription = "Local file: " + url
 		logger.Log(fmt.Sprintf("Using filename as title: %s", videoTitle))
 	} else {
-		logger.Log("Fetching video metadata...")
-		videoTitle, err = dl.GetVideoTitle(url)
-		if err != nil {
-			videoTitle = "Task_" + time.Now().Format("20060102_150405")
-			logger.Log(fmt.Sprintf("Warning: Failed to get title (%v), using fallback: %s", err, videoTitle))
+		// Attempt to get media info
+		logger.Log("Fetching media metadata...")
+		title, err := dl.GetVideoTitle(url)
+		if err != nil || title == "" {
+			logger.Log("Media not detected. Attempting to scrape as article...")
+			art, sErr := s.scraper.Scrape(url)
+			if sErr != nil {
+				return nil, fmt.Errorf("content ingestion failed (tried media and article): %v", sErr)
+			}
+			isArticle = true
+			videoTitle = art.Title
+			videoDescription = "Article: " + url
+			transcript = art.Content
+			sourceLang = "auto" // Scraper usually doesn't give precise lang code
+			logger.Log(fmt.Sprintf("Article detected: %s", videoTitle))
 		} else {
-			logger.Log(fmt.Sprintf("Title found: %s", videoTitle))
-		}
-
-		videoDescription, err = dl.GetVideoDescription(url)
-		if err != nil {
-			logger.Log(fmt.Sprintf("Warning: Failed to get description: %v", err))
-			videoDescription = ""
+			videoTitle = title
+			logger.Log(fmt.Sprintf("Media found: %s", videoTitle))
+			videoDescription, _ = dl.GetVideoDescription(url)
 		}
 	}
 
@@ -70,52 +84,53 @@ func (s *CoreService) ProcessTask(ctx context.Context, url string, opts Options,
 		return nil, ctx.Err()
 	}
 
-	// 2. Download/Prepare Media
-	var mediaPath string
-	if isLocalFile {
-		logger.Log("Copying local file to temporary directory...")
-		destPath := filepath.Join(tempDir, filepath.Base(url))
-		if err := copyFile(url, destPath); err != nil {
-			return nil, fmt.Errorf("failed to copy local file: %w", err)
+	// 2. Download/Prepare Media (Only for non-articles)
+	if !isArticle {
+		if isLocalFile {
+			logger.Log("Preparing local file...")
+			destPath := filepath.Join(tempDir, filepath.Base(url))
+			if err := copyFile(url, destPath); err != nil {
+				return nil, fmt.Errorf("failed to copy local file: %w", err)
+			}
+			mediaPath = destPath
+		} else {
+			logger.Log(fmt.Sprintf("Downloading media from %s...", url))
+			mediaPath, err = dl.DownloadMedia(url, tempDir, opts.AudioOnly, func(msg string) {
+				if ctx.Err() == nil {
+					logger.Log("[DL] " + msg)
+				}
+			})
+			if err != nil {
+				return nil, fmt.Errorf("download failed: %w", err)
+			}
 		}
-		mediaPath = destPath
-	} else {
-		logger.Log(fmt.Sprintf("Downloading media from %s...", url))
-		mediaPath, err = dl.DownloadMedia(url, tempDir, opts.AudioOnly, func(msg string) {
+		logger.Log(fmt.Sprintf("Media ready: %s", mediaPath))
+
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
+		// 3. Transcribe (Only for non-articles)
+		logger.Log("Transcribing audio...")
+		tr := transcriber.NewTranscriber(s.depManager)
+		transcript, sourceLang, err = tr.Transcribe(mediaPath, opts.ModelPath, func(msg string) {
 			if ctx.Err() == nil {
-				logger.Log("[DL] " + msg)
+				logger.Log("[Whisper] " + msg)
 			}
 		})
 		if err != nil {
-			return nil, fmt.Errorf("download failed: %w", err)
+			logger.Log("Transcription failed. Analysis will be skipped.")
+			transcript = "Transcription failed."
+		} else {
+			logger.Log(fmt.Sprintf("Transcription complete (Language: %s).", sourceLang))
 		}
-	}
-	logger.Log(fmt.Sprintf("Media ready: %s", mediaPath))
-
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-
-	// 3. Transcribe
-	logger.Log("Transcribing audio...")
-	tr := transcriber.NewTranscriber(s.depManager)
-	transcript, sourceLang, err := tr.Transcribe(mediaPath, opts.ModelPath, func(msg string) {
-		if ctx.Err() == nil {
-			logger.Log("[Whisper] " + msg)
-		}
-	})
-	if err != nil {
-		logger.Log("Transcription failed. Analysis will be skipped.")
-		transcript = "Transcription failed."
-	} else {
-		logger.Log(fmt.Sprintf("Transcription complete (Language: %s).", sourceLang))
 	}
 
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
 
-	// 4. Translate & Analyze
+	// 4. Translate & Analyze (Common for both)
 	analysis := &analyzer.AnalysisResult{}
 	var translationPairs []translation.TranslationPair
 	summary := "No analysis performed."
@@ -196,9 +211,12 @@ func (s *CoreService) ProcessTask(ctx context.Context, url string, opts Options,
 	sm := storage.NewManager(vaultPath)
 	safeTitle := sm.SanitizeFilename(videoTitle)
 
-	finalMedia, err := sm.MoveMedia(mediaPath, safeTitle)
-	if err != nil {
-		return nil, fmt.Errorf("failed to move media: %w", err)
+	var finalMedia string
+	if !isArticle {
+		finalMedia, err = sm.MoveMedia(mediaPath, safeTitle)
+		if err != nil {
+			return nil, fmt.Errorf("failed to move media: %w", err)
+		}
 	}
 
 	noteData := storage.NoteData{
