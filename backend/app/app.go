@@ -199,15 +199,18 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 				logContent += fmt.Sprintf("\n\n[FATAL ERROR] %v", taskErr)
 			}
 
-			home, _ := os.UserHomeDir()
-			debugDir := filepath.Join(home, ".varys", "logs")
-			os.MkdirAll(debugDir, 0755)
+			logDir, err := config.GetLogDir()
+			if err != nil {
+				// Fallback to current dir if system log dir fails
+				logDir = "logs"
+			}
+			os.MkdirAll(logDir, 0755)
 
 			filename := fmt.Sprintf("error_%s.log", timestamp)
-			filePath := filepath.Join(debugDir, filename)
+			filePath := filepath.Join(logDir, filename)
 			os.WriteFile(filePath, []byte(logContent), 0644)
 
-			latestPath := filepath.Join(debugDir, "error_latest.log")
+			latestPath := filepath.Join(logDir, "error_latest.log")
 			os.WriteFile(latestPath, []byte(logContent), 0644)
 
 			logger.Log(fmt.Sprintf("Logs dumped to %s", filePath))

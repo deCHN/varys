@@ -22,21 +22,79 @@ type Config struct {
 
 type Manager struct {
 	configPath string
+	appDir     string
+}
+
+// GetConfigDir returns the directory for config.json
+// Priority:
+// 1. Environment variable: VARYS_CONFIG_DIR
+// 2. XDG/CLI habit: ~/.config/varys (if config.json exists there)
+// 3. System default fallback: os.UserConfigDir()
+func GetConfigDir() (string, error) {
+	// 1. Check environment variable
+	if envDir := os.Getenv("VARYS_CONFIG_DIR"); envDir != "" {
+		return envDir, nil
+	}
+
+	home, _ := os.UserHomeDir()
+	xdgDir := filepath.Join(home, ".config", "varys")
+	xdgConfig := filepath.Join(xdgDir, "config.json")
+
+	// 2. Check XDG/CLI habit (if config.json exists)
+	if _, err := os.Stat(xdgConfig); err == nil {
+		return xdgDir, nil
+	}
+
+	// 3. System default fallback
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user config dir: %w", err)
+	}
+	return filepath.Join(configDir, "Varys"), nil
+}
+
+// GetLogDir returns the system standard directory for logs.
+// On macOS: ~/Library/Logs/Varys
+func GetLogDir() (string, error) {
+	home, _ := os.UserHomeDir()
+	// macOS Standard Log Path
+	logDir := filepath.Join(home, "Library", "Logs", "Varys")
+	
+	// Fallback for non-macOS or if Library/Logs doesn't exist
+	if _, err := os.Stat(filepath.Join(home, "Library", "Logs")); err != nil {
+		cacheDir, err := os.UserCacheDir()
+		if err != nil {
+			return "", err
+		}
+		logDir = filepath.Join(cacheDir, "Varys", "logs")
+	}
+	
+	return logDir, nil
 }
 
 func NewManager() (*Manager, error) {
-	configDir, err := os.UserConfigDir()
+	configDir, err := GetConfigDir()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user config dir: %w", err)
+		return nil, err
 	}
 
-	appDir := filepath.Join(configDir, "Varys")
-	if err := os.MkdirAll(appDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create app config dir: %w", err)
+	logDir, err := GetLogDir()
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure the app directory exists
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create config directory: %w", err)
+	}
+	// Ensure the log directory exists
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
 	return &Manager{
-		configPath: filepath.Join(appDir, "config.json"),
+		configPath: filepath.Join(configDir, "config.json"),
+		appDir:     configDir,
 	}, nil
 }
 
