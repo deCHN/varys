@@ -17,6 +17,8 @@ export function GetConfig():Promise<config.Config>;
 
 export function GetConfigPath():Promise<string>;
 
+export function GetDefaultPrompt():Promise<string>;
+
 export function GetStartupDiagnostics():Promise<app.StartupDiagnostics>;
 
 export function LocateConfigFile():Promise<void>;

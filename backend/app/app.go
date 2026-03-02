@@ -271,6 +271,11 @@ func (a *App) GetConfigPath() (string, error) {
 	return a.cfgManager.GetConfigPath(), nil
 }
 
+// GetDefaultPrompt returns the embedded default analysis prompt template.
+func (a *App) GetDefaultPrompt() string {
+	return analyzer.GetDefaultPrompt()
+}
+
 // LocateConfigFile opens the file explorer and selects the config file.
 func (a *App) LocateConfigFile() error {
 	path, err := a.GetConfigPath()

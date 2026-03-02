@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics, LocateConfigFile, StartOllamaService, StopOllamaService } from "../wailsjs/go/app/App";
+import { GetConfig, UpdateConfig, SelectVaultPath, SelectModelPath, GetAIModels, GetConfigPath, GetAppVersion, GetStartupDiagnostics, LocateConfigFile, StartOllamaService, StopOllamaService, GetDefaultPrompt } from "../wailsjs/go/app/App";
 import { app } from "../wailsjs/go/models";
 import HealthStatusBadge from "./components/health/HealthStatusBadge";
 import HealthItemRow from "./components/health/HealthItemRow";
@@ -40,32 +40,12 @@ export default function Settings(props: SettingsProps) {
     const [aiModels, setAIModels] = useState<string[]>([]);
     const [configPath, setConfigPath] = useState<string>('');
     const [version, setVersion] = useState<string>('');
+    const [defaultPrompt, setDefaultPrompt] = useState<string>('');
     const [status, setStatus] = useState<{msg: string, type: 'success' | 'error' | ''}>({msg: '', type: ''});
     const systemCheckRef = useRef<HTMLDivElement>(null);
     const displayVersion = version
         ? (version.toLowerCase().startsWith('v') ? version : `v${version}`)
         : '';
-
-    const defaultPrompt = `You are an expert content analyst.
-Task: Analyze the following text and provide a structured analysis in [Target Language].
-
-Rules:
-1. OUTPUT MUST BE IN [Target Language].
-2. If the input text is in English, TRANSLATE your analysis to [Target Language].
-3. Tags must be single words or hyphenated (no spaces).
-
-Format: Return ONLY a valid JSON object with the following structure:
-{
-  "summary": "Concise summary of the content",
-  "key_points": ["Point 1", "Point 2", "Point 3"],
-  "tags": ["Tag1", "Tag2", "Tag3"],
-  "assessment": {
-    "authenticity": "Rating/Comment",
-    "effectiveness": "Rating/Comment",
-    "timeliness": "Rating/Comment",
-    "alternatives": "Rating/Comment"
-  }
-}`;
 
     const languages = [
         "Simplified Chinese",
@@ -92,6 +72,7 @@ Format: Return ONLY a valid JSON object with the following structure:
         refreshDiagnostics();
         GetConfigPath().then(setConfigPath);
         GetAppVersion().then(setVersion);
+        GetDefaultPrompt().then(setDefaultPrompt);
     }, []);
 
     useEffect(() => {

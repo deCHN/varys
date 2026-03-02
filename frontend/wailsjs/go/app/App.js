@@ -30,6 +30,10 @@ export function GetConfigPath() {
   return window['go']['app']['App']['GetConfigPath']();
 }
 
+export function GetDefaultPrompt() {
+  return window['go']['app']['App']['GetDefaultPrompt']();
+}
+
 export function GetStartupDiagnostics() {
   return window['go']['app']['App']['GetStartupDiagnostics']();
 }
