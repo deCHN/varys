@@ -33,7 +33,7 @@ func TestGetConfigDir_Safe(t *testing.T) {
 	t.Run("XDGHabitPriority", func(t *testing.T) {
 		os.Unsetenv("VARYS_CONFIG_DIR")
 		
-		xdgDir := filepath.Join(mockHome, ".config", "varys")
+		xdgDir := filepath.Join(mockHome, ".config", "Varys")
 		os.MkdirAll(xdgDir, 0755)
 		configPath := filepath.Join(xdgDir, "config.json")
 		os.WriteFile(configPath, []byte("{}"), 0644)

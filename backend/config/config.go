@@ -42,7 +42,7 @@ func GetConfigDir() (string, error) {
 	}
 
 	home, _ := userHomeDir()
-	xdgDir := filepath.Join(home, ".config", "varys")
+	xdgDir := filepath.Join(home, ".config", "Varys")
 	xdgConfig := filepath.Join(xdgDir, "config.json")
 
 	// 2. Check XDG/CLI habit (if config.json exists)
