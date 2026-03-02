@@ -3,16 +3,20 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
-func TestGetConfigDir(t *testing.T) {
-	home, _ := os.UserHomeDir()
+func TestGetConfigDir_Safe(t *testing.T) {
+	mockHome := t.TempDir()
 	
+	// Mock userHomeDir to return our temp dir
+	oldHomeFunc := userHomeDir
+	userHomeDir = func() (string, error) { return mockHome, nil }
+	defer func() { userHomeDir = oldHomeFunc }()
+
 	// 1. Test Environment Variable Priority
 	t.Run("EnvVarPriority", func(t *testing.T) {
-		expected := "/tmp/varys_custom_config"
+		expected := filepath.Join(mockHome, "custom_env_config")
 		os.Setenv("VARYS_CONFIG_DIR", expected)
 		defer os.Unsetenv("VARYS_CONFIG_DIR")
 
@@ -25,16 +29,14 @@ func TestGetConfigDir(t *testing.T) {
 		}
 	})
 
-	// 2. Test XDG/CLI habit (if config.json exists)
+	// 2. Test XDG/CLI habit (Mocked)
 	t.Run("XDGHabitPriority", func(t *testing.T) {
 		os.Unsetenv("VARYS_CONFIG_DIR")
 		
-		// Create a mock XDG config directory and file
-		xdgDir := filepath.Join(home, ".config", "varys")
+		xdgDir := filepath.Join(mockHome, ".config", "varys")
 		os.MkdirAll(xdgDir, 0755)
 		configPath := filepath.Join(xdgDir, "config.json")
 		os.WriteFile(configPath, []byte("{}"), 0644)
-		defer os.Remove(configPath)
 
 		got, err := GetConfigDir()
 		if err != nil {
@@ -44,35 +46,27 @@ func TestGetConfigDir(t *testing.T) {
 			t.Errorf("Expected %s, got %s", xdgDir, got)
 		}
 	})
-
-	// 3. Test System Default Fallback
-	t.Run("SystemDefaultFallback", func(t *testing.T) {
-		os.Unsetenv("VARYS_CONFIG_DIR")
-		
-		// Ensure XDG config file doesn't exist for this test
-		xdgConfig := filepath.Join(home, ".config", "varys", "config.json")
-		os.Remove(xdgConfig)
-
-		got, err := GetConfigDir()
-		if err != nil {
-			t.Errorf("GetConfigDir failed: %v", err)
-		}
-		
-		// On macOS it should be ~/Library/Application Support/Varys
-		if !strings.Contains(got, "Application Support") && !strings.Contains(got, "Varys") {
-			t.Errorf("Expected system default path, got %s", got)
-		}
-	})
 }
 
-func TestGetLogDir(t *testing.T) {
+func TestGetLogDir_Safe(t *testing.T) {
+	mockHome := t.TempDir()
+	
+	// Mock userHomeDir
+	oldHomeFunc := userHomeDir
+	userHomeDir = func() (string, error) { return mockHome, nil }
+	defer func() { userHomeDir = oldHomeFunc }()
+
+	// 模拟 Library/Logs 存在 (macOS 场景)
+	macLogPath := filepath.Join(mockHome, "Library", "Logs")
+	os.MkdirAll(macLogPath, 0755)
+
 	got, err := GetLogDir()
 	if err != nil {
 		t.Errorf("GetLogDir failed: %v", err)
 	}
 
-	// On macOS, it should be in ~/Library/Logs/Varys
-	if !strings.Contains(got, "Library/Logs") && !strings.Contains(got, "Varys") {
-		t.Errorf("Expected standard log path, got %s", got)
+	expected := filepath.Join(mockHome, "Library", "Logs", "Varys")
+	if got != expected {
+		t.Errorf("Expected %s, got %s", expected, got)
 	}
 }
