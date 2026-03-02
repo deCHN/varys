@@ -11,6 +11,11 @@ import (
 //go:embed default_prompt.txt
 var defaultAnalysisPrompt string
 
+// GetDefaultPrompt returns the raw embedded prompt template.
+func GetDefaultPrompt() string {
+	return defaultAnalysisPrompt
+}
+
 type Analyzer struct {
 	provider LLMProvider
 }
