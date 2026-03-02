@@ -56,7 +56,7 @@ func TestGetLogDir_Safe(t *testing.T) {
 	userHomeDir = func() (string, error) { return mockHome, nil }
 	defer func() { userHomeDir = oldHomeFunc }()
 
-	// 模拟 Library/Logs 存在 (macOS 场景)
+	// Simulate Library/Logs existence (macOS scenario)
 	macLogPath := filepath.Join(mockHome, "Library", "Logs")
 	os.MkdirAll(macLogPath, 0755)
 

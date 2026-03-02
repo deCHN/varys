@@ -59,7 +59,7 @@ func NewSearchModel(query string, providerName string, results []search.SearchRe
 	l.SetFilteringEnabled(true)
 	l.Styles.Title = titleStyle
 	
-	// 设置多选提示
+	// Set multi-select help hints
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "select")),
@@ -119,7 +119,7 @@ func (m SearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				curr := items[idx].(item)
 				curr.selected = m.selected[idx]
 				
-				// 视觉反馈：在标题前增加 [x]
+				// Visual feedback: prepend [x] to the title
 				if curr.selected {
 					if !strings.HasPrefix(curr.title, "[x] ") {
 						curr.title = "[x] " + curr.title
@@ -151,7 +151,7 @@ func (m SearchModel) View() string {
 	return docStyle.Render(m.list.View())
 }
 
-// RunSearchTUI 启动搜索界面的入口函数
+// RunSearchTUI is the entry point function to launch the search interface
 func RunSearchTUI(query string, provider search.SearchProvider, opts search.SearchOptions) ([]search.SearchResult, error) {
 	fmt.Printf("Searching for '%s' using %s...\n", query, provider.GetName())
 	

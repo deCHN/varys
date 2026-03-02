@@ -2,7 +2,7 @@ package search
 
 import "time"
 
-// ContentType 定义搜索内容的类型
+// ContentType defines the type of content being searched
 type ContentType string
 
 const (
@@ -12,14 +12,14 @@ const (
 	ContentTypeAll     ContentType = "all"
 )
 
-// SearchOptions 提供通用的搜索参数
+// SearchOptions provides common parameters for search requests
 type SearchOptions struct {
 	Limit     int
 	TimeRange string // "day", "week", "month", "year"
 	Type      ContentType
 }
 
-// SearchResult 标准化的搜索结果格式
+// SearchResult represents a standardized format for search results
 type SearchResult struct {
 	ID          string      `json:"id" yaml:"id"`
 	Title       string      `json:"title" yaml:"title"`
@@ -30,7 +30,7 @@ type SearchResult struct {
 	Type        ContentType `json:"type" yaml:"type"`
 }
 
-// SearchProvider 搜索服务提供者必须实现的接口
+// SearchProvider is the interface that search service providers must implement
 type SearchProvider interface {
 	GetName() string
 	Search(query string, opts SearchOptions) ([]SearchResult, error)

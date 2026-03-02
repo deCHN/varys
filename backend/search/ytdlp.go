@@ -28,11 +28,11 @@ func (p *YTDLPSearchProvider) Search(query string, opts SearchOptions) ([]Search
 		limit = 5
 	}
 
-	// 构造 yt-dlp 搜索参数
-	// ytsearchdateN:query 用于按日期排序
+	// Construct yt-dlp search parameters
+	// ytsearchdateN:query is used for sorting by date
 	searchQuery := fmt.Sprintf("ytsearch%d:%s", limit, query)
 	if opts.TimeRange != "" {
-		// 实际上 ytsearchdate 是针对 YouTube 的按日期排序
+		// ytsearchdate is specifically for YouTube's date-based sorting
 		searchQuery = fmt.Sprintf("ytsearchdate%d:%s", limit, query)
 	}
 

@@ -9,7 +9,7 @@ import (
 )
 
 func TestScrape(t *testing.T) {
-	// 模拟一个简单的网页服务器
+	// Mock a simple web server
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprintln(w, `<html><head><title>Test Title</title></head><body><article><h1>Main Heading</h1><p>This is the test content of the article.</p></article></body></html>`)
