@@ -9,7 +9,7 @@ import (
 )
 
 func TestParseYTDLPLine(t *testing.T) {
-	// 这是一个典型的 yt-dlp --dump-json 输出样例
+	// This is a typical example of yt-dlp --dump-json output
 	jsonLine := `{"id": "12345", "title": "Test Video", "webpage_url": "https://youtube.com/watch?v=12345", "description": "This is a test video", "uploader": "Test Channel", "epoch": 1700000000}`
 	
 	var entry map[string]interface{}
@@ -62,7 +62,7 @@ func TestYTDLPSearchCommand(t *testing.T) {
 	limit := opts.Limit
 	searchQuery := query
 	
-	// 我们实际代码中的逻辑：
+	// Logic in our actual code:
 	// searchQuery = fmt.Sprintf("ytsearch%d:%s", limit, query)
 	cmdStr := fmt.Sprintf("ytsearch%d:%s", limit, searchQuery)
 	if !strings.HasPrefix(cmdStr, "ytsearch1:") {
