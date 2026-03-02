@@ -25,6 +25,11 @@ type Manager struct {
 	appDir     string
 }
 
+var (
+	// userHomeDir is a var so it can be mocked in tests
+	userHomeDir = os.UserHomeDir
+)
+
 // GetConfigDir returns the directory for config.json
 // Priority:
 // 1. Environment variable: VARYS_CONFIG_DIR
@@ -36,7 +41,7 @@ func GetConfigDir() (string, error) {
 		return envDir, nil
 	}
 
-	home, _ := os.UserHomeDir()
+	home, _ := userHomeDir()
 	xdgDir := filepath.Join(home, ".config", "varys")
 	xdgConfig := filepath.Join(xdgDir, "config.json")
 
@@ -56,7 +61,7 @@ func GetConfigDir() (string, error) {
 // GetLogDir returns the system standard directory for logs.
 // On macOS: ~/Library/Logs/Varys
 func GetLogDir() (string, error) {
-	home, _ := os.UserHomeDir()
+	home, _ := userHomeDir()
 	// macOS Standard Log Path
 	logDir := filepath.Join(home, "Library", "Logs", "Varys")
 	
