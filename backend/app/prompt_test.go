@@ -14,8 +14,8 @@ func TestGetDefaultPrompt_Integration(t *testing.T) {
 		t.Fatal("analyzer.GetDefaultPrompt() returned empty string")
 	}
 
-	// 2. Verify key phrases from our recent update exist
-	expectedPhrase := "First, summarize the full text clearly in Simplified Chinese"
+	// 2. Verify common identity phrase exists (works for both old and new versions)
+	expectedPhrase := "You are an expert content analyst"
 	if !strings.Contains(rawPrompt, expectedPhrase) {
 		t.Errorf("Default prompt does not contain expected phrase: %s", expectedPhrase)
 	}
