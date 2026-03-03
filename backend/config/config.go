@@ -18,7 +18,7 @@ type Config struct {
 	CustomPrompt     string `json:"custom_prompt"`     // Custom user prompt for analysis
 	AIProvider       string `json:"ai_provider"`       // "ollama" or "openai"
 	OpenAIModel      string `json:"openai_model"`      // e.g. "gpt-4o"
-	OpenAIKey        string `json:"-"`                 // User provided API Key (Stored in Keyring)
+	OpenAIKey        string `json:"openai_key,omitempty"` // Stored in Keyring, passed via Wails
 }
 
 type Manager struct {
@@ -164,9 +164,11 @@ func (m *Manager) Save(cfg *Config) error {
 		}
 	}
 
-	// 2. Save non-sensitive data to JSON
-	// OpenAIKey will be omitted due to json:"-"
-	data, err := json.MarshalIndent(cfg, "", "  ")
+	// 2. Prepare a copy for file storage (without sensitive keys)
+	fileCfg := *cfg
+	fileCfg.OpenAIKey = "" // Clear before saving to disk
+
+	data, err := json.MarshalIndent(fileCfg, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
