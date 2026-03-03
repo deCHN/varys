@@ -51,7 +51,17 @@ func (t *Transcriber) Transcribe(audioPath, modelPath string, onProgress func(st
 	// 4. Run Whisper
 	// Use --no-timestamps to reduce VRAM usage and prevent OOM on M-series chips for long files.
 	// Use --print-progress to maintain a heartbeat in the logs.
-	cmd := exec.Command(binPath, "-m", modelPath, "-f", wavPath, "--output-txt", "--no-timestamps", "--print-progress", "--language", "auto")
+	// Added --entropy-thold and --logprob-thold to suppress hallucinations/looping.
+	cmd := exec.Command(binPath,
+		"-m", modelPath,
+		"-f", wavPath,
+		"--output-txt",
+		"--no-timestamps",
+		"--print-progress",
+		"--language", "auto",
+		"--entropy-thold", "2.4",
+		"--logprob-thold", "-1.0",
+	)
 
 	// Stream output
 	stdout, err := cmd.StdoutPipe()
