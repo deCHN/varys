@@ -3,12 +3,17 @@ package app
 
 import (
 	"Varys/backend/config"
+	"Varys/backend/secret"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestGetStartupDiagnostics_OpenAI_OllamaNotBlocker(t *testing.T) {
+	// Enable secret mocking for integration tests
+	secret.UseMockStore()
+	defer secret.ResetStore()
+
 	app := buildTestAppWithConfig(t, config.Config{
 		AIProvider: "openai",
 		OpenAIKey:  "sk-test",
@@ -32,6 +37,9 @@ func TestGetStartupDiagnostics_OpenAI_OllamaNotBlocker(t *testing.T) {
 }
 
 func TestGetStartupDiagnostics_OpenAI_MissingKeyIsBlocker(t *testing.T) {
+	secret.UseMockStore()
+	defer secret.ResetStore()
+
 	app := buildTestAppWithConfig(t, config.Config{
 		AIProvider: "openai",
 		VaultPath:  t.TempDir(),
@@ -50,6 +58,9 @@ func TestGetStartupDiagnostics_OpenAI_MissingKeyIsBlocker(t *testing.T) {
 }
 
 func TestGetStartupDiagnostics_Ollama_MissingIsBlocker(t *testing.T) {
+	secret.UseMockStore()
+	defer secret.ResetStore()
+
 	app := buildTestAppWithConfig(t, config.Config{
 		AIProvider: "ollama",
 		VaultPath:  t.TempDir(),
@@ -68,6 +79,9 @@ func TestGetStartupDiagnostics_Ollama_MissingIsBlocker(t *testing.T) {
 }
 
 func TestGetStartupDiagnostics_VaultAndModelMissingAreBlockers(t *testing.T) {
+	secret.UseMockStore()
+	defer secret.ResetStore()
+
 	app := buildTestAppWithConfig(t, config.Config{
 		AIProvider: "openai",
 		OpenAIKey:  "sk-test",
@@ -117,6 +131,9 @@ func TestLoadConfigSafe_DefaultWhenConfigInvalid(t *testing.T) {
 }
 
 func TestGetStartupDiagnostics_OllamaModelsMissingBlocksWhenProviderOllama(t *testing.T) {
+	secret.UseMockStore()
+	defer secret.ResetStore()
+
 	if checkOllamaRunning() {
 		t.Skip("ollama is running with real models; skip deterministic empty-models test")
 	}
