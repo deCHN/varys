@@ -106,7 +106,14 @@ func (a *App) Startup(ctx context.Context) {
 	}
 
 	a.analyzer = analyzer.NewAnalyzer(aiProvider, cfg.OpenAIKey, analyzerModel)
-	a.translator = translation.NewTranslator(translationModel)
+	
+	// Create a dedicated provider for translation
+	translationProvider := analyzer.NewAnalyzer(aiProvider, cfg.OpenAIKey, translationModel).GetProvider()
+	if aiProvider == "openai" && translationModel == "qwen3:0.6b" {
+		// Fallback to small cloud model if local model name is still at default while using OpenAI
+		translationProvider = analyzer.NewAnalyzer("openai", cfg.OpenAIKey, "gpt-4o-mini").GetProvider()
+	}
+	a.translator = translation.NewTranslator(translationProvider)
 
 	// Initialize Core Service
 	a.coreService = service.NewCoreService(a.depManager)
@@ -252,7 +259,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 
 // GetAppVersion returns the current application version
 func (a *App) GetAppVersion() string {
-	return "v0.4.1"
+	return "v0.4.2"
 }
 
 // GetConfig returns current config
