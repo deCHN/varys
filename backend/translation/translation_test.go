@@ -1,38 +1,34 @@
 package translation
 
 import (
-	"bytes"
-	"io"
-	"net/http"
+	"context"
 	"strings"
 	"testing"
 )
 
-type roundTripFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req)
+// MockProvider implements analyzer.LLMProvider for testing
+type MockProvider struct {
+	Response string
 }
 
+func (m *MockProvider) Chat(ctx context.Context, prompt string, opts map[string]interface{}, cb func(string)) (string, error) {
+	return m.Response, nil
+}
+func (m *MockProvider) Name() string { return "mock" }
+func (m *MockProvider) Model() string { return "mock-model" }
+func (m *MockProvider) ListModels(ctx context.Context) ([]string, error) { return []string{"mock-model"}, nil }
+
 func TestTranslate(t *testing.T) {
-	// 1. Init translator with mock HTTP client (no real socket listener required).
-	tr := NewTranslator("test-model")
-	tr.client = &http.Client{
-		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			if req.Method != http.MethodPost {
-				t.Errorf("Expected POST, got %s", req.Method)
-			}
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(bytes.NewBufferString(`{"response":"1. 你好.\n2. 世界。","done":true}`)),
-			}, nil
-		}),
+	// 1. Init translator with mock provider
+	mock := &MockProvider{
+		Response: "1. Hello.\n2. World.",
 	}
+	tr := NewTranslator(mock)
 
 	// 2. Run
-	input := "Hello.\nWorld."
-	results, err := tr.Translate(input, "Simplified Chinese", 4096, nil)
+	input := "你好。\n世界。"
+	// Translate method now requires context as the first argument
+	results, err := tr.Translate(context.Background(), input, "English", 4096, nil)
 	if err != nil {
 		t.Fatalf("Translate failed: %v", err)
 	}
@@ -41,16 +37,11 @@ func TestTranslate(t *testing.T) {
 		t.Errorf("Expected 2 results, got %d", len(results))
 	}
 
-	if strings.TrimRight(results[0].Translated, "。.") != "你好" {
-
-		t.Errorf("Expected '你好', got: %s", results[0].Translated)
-
+	if !strings.Contains(results[0].Translated, "Hello") {
+		t.Errorf("Expected 'Hello', got: %s", results[0].Translated)
 	}
 
-	if strings.TrimRight(results[1].Translated, "。.") != "世界" {
-
-		t.Errorf("Expected '世界', got: %s", results[1].Translated)
-
+	if !strings.Contains(results[1].Translated, "World") {
+		t.Errorf("Expected 'World', got: %s", results[1].Translated)
 	}
-
 }
