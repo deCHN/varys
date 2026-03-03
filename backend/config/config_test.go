@@ -1,11 +1,16 @@
 package config
 
 import (
+	"Varys/backend/secret"
 	"os"
 	"testing"
 )
 
 func TestConfigSaveLoad(t *testing.T) {
+	// Enable secret mocking to avoid touching OS Keychain during tests
+	secret.UseMockStore()
+	defer secret.ResetStore()
+
 	// Use a temp file for testing by overriding NewManager logic or just manually setting path
 	// Since NewManager uses UserHomeDir, let's just test Load/Save with a custom Manager
 

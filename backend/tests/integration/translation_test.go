@@ -2,12 +2,13 @@
 package integration_test
 
 import (
+	"Varys/backend/analyzer"
+	"Varys/backend/translation"
+	"context"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
-
-	"Varys/backend/translation"
 )
 
 // TestIntegrationTranslate performs a real call to Ollama.
@@ -20,13 +21,15 @@ func TestIntegrationTranslate(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	// 2. Init with default small model
-	tr := translation.NewTranslator("qwen3:0.6b")
+	// 2. Init with real Ollama provider
+	// We use the small qwen3:0.6b model which is standard for translation
+	provider := analyzer.NewAnalyzer("ollama", "", "qwen3:0.6b").GetProvider()
+	tr := translation.NewTranslator(provider)
 
 	// 3. Run Real Translation
 	// "Hello" -> Simplified Chinese
 	start := time.Now()
-	results, err := tr.Translate("Hello", "Simplified Chinese", 4096, nil)
+	results, err := tr.Translate(context.Background(), "Hello", "Simplified Chinese", 4096, nil)
 	if err != nil {
 		t.Fatalf("Real translation failed: %v", err)
 	}

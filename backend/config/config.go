@@ -1,6 +1,7 @@
 package config
 
 import (
+	"Varys/backend/secret"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -17,7 +18,7 @@ type Config struct {
 	CustomPrompt     string `json:"custom_prompt"`     // Custom user prompt for analysis
 	AIProvider       string `json:"ai_provider"`       // "ollama" or "openai"
 	OpenAIModel      string `json:"openai_model"`      // e.g. "gpt-4o"
-	OpenAIKey        string `json:"openai_key"`        // User provided API Key
+	OpenAIKey        string `json:"openai_key,omitempty"` // Stored in Keyring, passed via Wails
 }
 
 type Manager struct {
@@ -106,15 +107,36 @@ func NewManager() (*Manager, error) {
 func (m *Manager) Load() (*Config, error) {
 	data, err := os.ReadFile(m.configPath)
 	if os.IsNotExist(err) {
-		return &Config{ContextSize: 8192, TranslationModel: "qwen3:0.6b"}, nil // Return empty default config
+		return &Config{ContextSize: 8192, TranslationModel: "qwen3:0.6b"}, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
+	// 1. Parse base config
+	// Note: OpenAIKey will be empty here because of json:"-"
 	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	// 2. Fetch secrets from Keyring
+	key, err := secret.GetSecret(secret.KeyAccountOpenAI)
+	if err == nil && key != "" {
+		cfg.OpenAIKey = key
+	}
+
+	// 3. Migration: Check if config.json still contains plain-text keys
+	// We do this by re-parsing into a map to see if the field exists in JSON
+	var raw map[string]interface{}
+	json.Unmarshal(data, &raw)
+	if oldKey, ok := raw["openai_key"].(string); ok && oldKey != "" {
+		// Found legacy key, move to keyring
+		if err := secret.SetSecret(secret.KeyAccountOpenAI, oldKey); err == nil {
+			cfg.OpenAIKey = oldKey
+			// Trigger a save to clean up the JSON file
+			m.Save(&cfg)
+		}
 	}
 
 	// Set defaults if missing
@@ -135,7 +157,18 @@ func (m *Manager) Load() (*Config, error) {
 }
 
 func (m *Manager) Save(cfg *Config) error {
-	data, err := json.MarshalIndent(cfg, "", "  ")
+	// 1. Save sensitive data to Keyring
+	if cfg.OpenAIKey != "" {
+		if err := secret.SetSecret(secret.KeyAccountOpenAI, cfg.OpenAIKey); err != nil {
+			return fmt.Errorf("failed to save secret to keyring: %w", err)
+		}
+	}
+
+	// 2. Prepare a copy for file storage (without sensitive keys)
+	fileCfg := *cfg
+	fileCfg.OpenAIKey = "" // Clear before saving to disk
+
+	data, err := json.MarshalIndent(fileCfg, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}

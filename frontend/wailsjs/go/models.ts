@@ -117,7 +117,7 @@ export namespace config {
 	    custom_prompt: string;
 	    ai_provider: string;
 	    openai_model: string;
-	    openai_key: string;
+	    openai_key?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
