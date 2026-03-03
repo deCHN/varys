@@ -1,42 +1,21 @@
 package translation
 
 import (
-	"bytes"
-	"encoding/json"
+	"Varys/backend/analyzer"
+	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"regexp"
 	"strings"
 )
 
 type Translator struct {
-	modelName string
-	apiURL    string
-	client    *http.Client
+	provider analyzer.LLMProvider
 }
 
-func NewTranslator(model string) *Translator {
-	if model == "" {
-		model = "qwen3:0.6b" // Default for translation
-	}
+func NewTranslator(provider analyzer.LLMProvider) *Translator {
 	return &Translator{
-		modelName: model,
-		apiURL:    "http://localhost:11434/api/generate",
-		client:    http.DefaultClient,
+		provider: provider,
 	}
-}
-
-type Request struct {
-	Model   string                 `json:"model"`
-	Prompt  string                 `json:"prompt"`
-	Stream  bool                   `json:"stream"`
-	Options map[string]interface{} `json:"options,omitempty"`
-}
-
-type Response struct {
-	Response string `json:"response"`
-	Done     bool   `json:"done"`
 }
 
 type TranslationPair struct {
@@ -44,12 +23,12 @@ type TranslationPair struct {
 	Translated string `json:"translated"`
 }
 
-func (t *Translator) Translate(text string, targetLang string, contextSize int, onProgress func(int, int)) ([]TranslationPair, error) {
+func (t *Translator) Translate(ctx context.Context, text string, targetLang string, contextSize int, onProgress func(int, int)) ([]TranslationPair, error) {
 	if targetLang == "" {
 		targetLang = "Simplified Chinese"
 	}
 	if contextSize == 0 {
-		contextSize = 8192 // Fallback default
+		contextSize = 8192
 	}
 
 	// 1. Split text into individual sentences
@@ -58,8 +37,7 @@ func (t *Translator) Translate(text string, targetLang string, contextSize int, 
 		return nil, nil
 	}
 
-	// 2. Process in small numbered batches (5-8 sentences)
-	// Small models (0.6b) are much more accurate with numbering and small batches.
+	// 2. Process in small numbered batches
 	const batchSize = 7
 	var allPairs []TranslationPair
 
@@ -94,54 +72,19 @@ Rules:
 Input:
 %s`, targetLang, len(currentBatch), inputBuilder.String())
 
-		reqBody := Request{
-			Model:  t.modelName,
-			Prompt: prompt,
-			Stream: false,
-			Options: map[string]interface{}{
-				"num_ctx":     contextSize,
-				"num_predict": 2048, // Smaller output expected per batch
-				"temperature": 0.1,  // Lower temperature for stricter adherence
-			},
+		options := map[string]interface{}{
+			"num_ctx":     contextSize,
+			"num_predict": 2048,
+			"temperature": 0.1,
 		}
 
-		jsonData, err := json.Marshal(reqBody)
+		responseText, err := t.provider.Chat(ctx, prompt, options, nil)
 		if err != nil {
 			return nil, err
-		}
-
-		req, err := http.NewRequest(http.MethodPost, t.apiURL, bytes.NewBuffer(jsonData))
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("Content-Type", "application/json")
-
-		client := t.client
-		if client == nil {
-			client = http.DefaultClient
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return nil, err
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			return nil, fmt.Errorf("ollama error %s: %s", resp.Status, string(body))
-		}
-
-		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-
-		var result Response
-		if err := json.Unmarshal(body, &result); err != nil {
-			continue
 		}
 
 		// 3. Parse Numbered Output
-		translatedLines := t.parseNumberedOutput(result.Response, len(currentBatch))
+		translatedLines := t.parseNumberedOutput(responseText, len(currentBatch))
 
 		for j := 0; j < len(currentBatch); j++ {
 			trans := "(Translation missing)"

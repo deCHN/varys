@@ -93,3 +93,7 @@ func (a *Analyzer) Analyze(ctx context.Context, text string, customPrompt string
 func (a *Analyzer) ListModels(ctx context.Context) ([]string, error) {
 	return a.provider.ListModels(ctx)
 }
+
+func (a *Analyzer) GetProvider() LLMProvider {
+	return a.provider
+}

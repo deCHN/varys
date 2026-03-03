@@ -1,9 +1,13 @@
 package scraper
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/go-shiori/go-readability"
@@ -15,6 +19,7 @@ type Article struct {
 	Author      string
 	PublishedAt time.Time
 	URL         string
+	Language    string
 }
 
 type Scraper struct {
@@ -45,15 +50,27 @@ func (s *Scraper) Scrape(u string) (*Article, error) {
 		return nil, fmt.Errorf("bad status code: %d", resp.StatusCode)
 	}
 
-	article, err := readability.FromReader(resp.Body, parsedURL)
+	// Read body once for metadata and readability
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	
+	article, err := readability.FromReader(bytes.NewReader(bodyBytes), parsedURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse article: %w", err)
 	}
 
+	// Simple language detection from HTML attribute
+	lang := "auto"
+	reLang := regexp.MustCompile(`(?i)<html[^>]*lang=["']([^"']+)["']`)
+	matches := reLang.FindStringSubmatch(string(bodyBytes))
+	if len(matches) > 1 {
+		lang = strings.Split(matches[1], "-")[0] // e.g., "en-US" -> "en"
+	}
+
 	return &Article{
-		Title:   article.Title,
-		Content: article.TextContent,
-		Author:  article.Byline,
-		URL:     u,
+		Title:    article.Title,
+		Content:  article.TextContent,
+		Author:   article.Byline,
+		URL:      u,
+		Language: lang,
 	}, nil
 }

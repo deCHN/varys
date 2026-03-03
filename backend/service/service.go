@@ -71,8 +71,8 @@ func (s *CoreService) ProcessTask(ctx context.Context, url string, opts Options,
 			videoTitle = art.Title
 			videoDescription = "Article: " + url
 			transcript = art.Content
-			sourceLang = "auto" // Scraper usually doesn't give precise lang code
-			logger.Log(fmt.Sprintf("Article detected: %s", videoTitle))
+			sourceLang = art.Language
+			logger.Log(fmt.Sprintf("Article detected: %s (Language: %s)", videoTitle, sourceLang))
 		} else {
 			videoTitle = title
 			logger.Log(fmt.Sprintf("Media found: %s", videoTitle))
@@ -155,8 +155,17 @@ func (s *CoreService) ProcessTask(ctx context.Context, url string, opts Options,
 
 		if shouldTranslate {
 			logger.Log(fmt.Sprintf("Translating to %s...", targetLang))
-			translator := translation.NewTranslator(opts.TranslationMod)
-			translationPairs, err = translator.Translate(transcript, targetLang, opts.ContextSize, func(current, total int) {
+			
+			// Use the configured AI Provider for translation as well
+			translationProvider := analyzer.NewAnalyzer(opts.AIProvider, opts.OpenAIKey, opts.TranslationMod).GetProvider()
+			if opts.AIProvider == "openai" && opts.TranslationMod == "qwen3:0.6b" {
+				// If provider is OpenAI but translation model is default Ollama one, 
+				// fallback to OpenAI default for translation to avoid local connection error
+				translationProvider = analyzer.NewAnalyzer("openai", opts.OpenAIKey, "gpt-4o-mini").GetProvider()
+			}
+
+			translator := translation.NewTranslator(translationProvider)
+			translationPairs, err = translator.Translate(ctx, transcript, targetLang, opts.ContextSize, func(current, total int) {
 				if ctx.Err() == nil {
 					percent := float64(current+1) / float64(total) * 100
 					logger.Progress(percent)
