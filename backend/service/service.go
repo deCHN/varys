@@ -148,9 +148,10 @@ func (s *CoreService) ProcessTask(ctx context.Context, url string, opts Options,
 		isEnglishSource := sourceLang == "en"
 		isEnglishTarget := strings.Contains(targetLang, "English")
 
+		// Only skip if source and target are BOTH Chinese or BOTH English
 		if (isChineseSource && isChineseTarget) || (isEnglishSource && isEnglishTarget) {
 			shouldTranslate = false
-			logger.Log("Source language matches target. Skipping translation.")
+			logger.Log(fmt.Sprintf("Source language (%s) matches target (%s). Skipping translation.", sourceLang, targetLang))
 		}
 
 		if shouldTranslate {
