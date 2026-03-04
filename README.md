@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Version-v0.4.3-violet" alt="Version">
   <img src="https://img.shields.io/badge/Platform-macOS-black?logo=apple" alt="Platform">
   <img src="https://img.shields.io/badge/Built%20with-Wails%20%2B%20Go-cyan?logo=go" alt="Wails">
   <img src="https://img.shields.io/badge/AI-Local%20LLM-violet?logo=ollama" alt="AI">
@@ -17,56 +18,48 @@
 
 ---
 
-Varys is a local-first desktop and CLI application designed to automate the capture, transcription, and analysis of video and audio content. It seamlessly transforms multimedia into structured insights and integrates them directly into your Obsidian Vault, building a high-fidelity personal knowledge base with zero cloud dependency.
-
-## Project Goal
-
-Varys bridges the gap between online multimedia and structured personal knowledge. By utilizing local AI models, it ensures your data remains private, processing is free, and your intelligence grows without reliance on external subscriptions or cloud providers.
+Varys is a local-first desktop and CLI application designed to automate the discovery, capture, transcription, and analysis of diverse online content. From YouTube deep-dives to technical blog posts, Varys transforms multimedia and web articles into structured insights, integrating them directly into your Obsidian Vault to build a high-fidelity personal knowledge base.
 
 ## Key Features
 
-- **One-Click Capture**: Extract and process video or audio from YouTube, Bilibili, and other major platforms via yt-dlp.
-- **Local Transcription**: High-performance, hardware-accelerated speech-to-text powered by whisper.cpp with Metal optimization.
-- **AI-Powered Analysis**: Automatic generation of summaries, key points, and tags using local LLMs via Ollama.
-- **Intelligent Translation**: Context-aware translation to your target language with smart chunking for long-form content.
-- **Obsidian Integration**: Direct export to your vault with formatted Markdown, frontmatter metadata, and embedded media files.
-- **Privacy Centric**: All processing (transcription, analysis, and storage) is performed locally on your hardware.
+- **Active Discovery**: Use the new interactive TUI to search for videos and articles across platforms (YouTube, Web) and batch-process them with a single command.
+- **Unified Ingestion**: Automatically detects content types. Handles video/audio via high-performance transcription and scrapes web articles via specialized readability engines.
+- **Secure by Design**: Sensitive API keys are stored in the OS Keychain (macOS) or Credential Manager, ensuring your credentials never stay in plain-text configuration files.
+- **Hardware Accelerated**: Blazing-fast speech-to-text powered by whisper.cpp with Apple Silicon (Metal) optimization.
+- **Multi-Provider AI**: Choose between local LLMs (Ollama) or cloud providers (OpenAI) for deep analysis and translation.
+- **Flexible Templating**: Fully customizable analysis prompts using a robust template system with {{.Language}} and {{.Content}} placeholders.
+- **Obsidian Ready**: Direct export to your vault with formatted Markdown, frontmatter metadata, and embedded media files.
 
 ## Technical Architecture
 
-Varys orchestrates a stack of industry-leading local intelligence tools:
+Varys orchestrates a professional-grade stack of intelligence tools:
 
-1. **yt-dlp**: For robust media extraction and metadata retrieval.
-2. **whisper.cpp**: For high-speed, offline transcription with Apple Silicon optimization.
-3. **Ollama**: For running high-quality LLMs (e.g., Qwen, Llama) for analysis and translation.
-4. **Wails**: For a lightweight, native desktop experience using Go and React.
-
+1. **yt-dlp**: Robust media extraction and metadata retrieval.
+2. **Tavily / Search Engines**: Agentic search for cross-platform content discovery.
+3. **whisper.cpp**: High-speed, offline transcription optimized for Apple hardware.
+4. **Ollama / OpenAI**: Flexible LLM backends for analysis and translation.
+5. **go-readability**: Clean content extraction for blog posts and articles.
+6. **Wails**: Lightweight, native desktop experience using Go and React.
 
 ## Getting Started
 
 ### Prerequisites
 
-- **macOS** (Apple Silicon M1/M2/M3 recommended for optimal performance).
-- **Ollama**: Installed and running (`brew install ollama && ollama serve`).
-- **FFmpeg**: Required for audio processing (`brew install ffmpeg`).
+- **macOS** (Apple Silicon recommended).
+- **Ollama**: For local AI capabilities (`brew install ollama`).
+- **FFmpeg**: Required for media processing (`brew install ffmpeg`).
+- **Tavily API Key** (Optional): For enhanced web discovery features.
 
 ### Installation
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/deCHN/varys.git
-   cd varys
-   ```
-
-2. **Build and Install**:
-   ```bash
-   make install
-   ```
-   This command compiles both the **Desktop GUI** and the **Standalone CLI**, installing the application into your `/Applications` folder and the CLI into your system path.
+```bash
+make install
+```
+This installs the Varys Desktop GUI to /Applications and the Standalone CLI (varys-cli) to your system path.
 
 ## Usage
 
-Varys can be operated through its modern Graphical User Interface or directly from the terminal.
+Varys can be operated through its Graphical User Interface or directly from the terminal.
 
 ### 1. Desktop GUI
 
@@ -80,60 +73,56 @@ The GUI provides a visual experience with real-time logs and live AI analysis st
   <img src="docs/assets/dashboard.png" width="80%" alt="Varys Main Dashboard">
 </p>
 
-**Configuration Panel**: Set your Obsidian vault, Whisper model path, AI provider/model, target language, and analysis prompt.
+**Configuration Panel**: Set your Obsidian vault, AI provider, and analysis prompt.
 
 <p align="center">
   <img src="docs/assets/config.png" width="80%" alt="Varys Configuration Panel">
 </p>
 
-1. **Initial Setup**: Open the **Settings** tab to configure your Obsidian Vault path and verify that system dependencies are detected.
-2. **Process Content**: Paste a video URL into the dashboard, select between **Audio** or **Video** mode, and click **Process**.
-3. **Review**: Watch real-time logs and AI analysis. Once the task is complete, the note will appear immediately in your Obsidian Vault.
+### 2. Agentic Search & Batch Discovery (CLI)
 
-### 2. Command Line Interface (CLI)
+Discover and ingest content using the interactive terminal interface:
 
-The CLI (`varys-cli`) is ideal for automation and power users who prefer the terminal.
+```bash
+# Search for OpenAI news and choose multiple items to process
+varys-cli search "OpenAI latest updates" --provider tavily
 
-- **Basic Usage**:
-  ```bash
-  varys-cli "https://www.youtube.com/watch?v=..."
-  ```
-- **Download Video** (instead of audio only):
-  ```bash
-  varys-cli -v "https://www.youtube.com/watch?v=..."
-  ```
-- **Override AI Provider or Model**:
-  ```bash
-  varys-cli --ai-provider openai --model gpt-4o "https://www.youtube.com/watch?v=..."
-  ```
-- **List all options**:
-  ```bash
-  varys-cli --help
-  ```
+# Search for technical videos and download them as full video files
+varys-cli search "Next.js 15 tutorial" --provider yt-dlp -v
+```
+*Interaction: Use [Space] to mark items and [Enter] to start the ingestion pipeline.*
+
+### 3. Direct Ingestion (CLI)
+
+Process a specific URL immediately:
+
+```bash
+# Process a video with default settings
+varys-cli "https://www.youtube.com/watch?v=..."
+
+# Process a blog post using OpenAI for analysis
+varys-cli "https://example.com/blog-post" --ai-provider openai
+```
+
 <p align="center">
-  <img src="docs/assets/cli_demo.gif" width="80%" alt="Varys CLI 20-second demo">
+  <img src="docs/assets/cli_demo.gif" width="80%" alt="Varys CLI demo">
 </p>
 
+## Configuration
+
+Varys follows the XDG standard. You can find or sync your configuration at:
+- **Config**: ~/.config/Varys/config.json
+- **Logs**: ~/Library/Logs/Varys/
+
 ## Roadmap
-
-- Native support for local file drag-and-drop.
-- Built-in library view for historical task management.
-- Multi-vault configuration and management.
-- User-definable analysis templates and prompts.
-
-## Contributing
-
-We welcome contributions to Varys. To contribute:
-
-1. Fork the Project.
-2. Create your Feature Branch (`git checkout -b feature/NewFeature`).
-3. Commit your changes (`git commit -m 'Add NewFeature'`).
-4. Push to the branch (`git push origin feature/NewFeature`).
-5. Open a Pull Request.
+- [x] Web article scraping and analysis.
+- [x] Multi-provider translation support.
+- [x] Interactive TUI discovery.
+- [ ] Native support for local file drag-and-drop.
+- [ ] Built-in library view for historical task management.
 
 ## License
-
-Varys is released under the **MIT License**. See the [LICENSE](./LICENSE) file for full details.
+Varys is released under the MIT License.
 
 <p align="center">
   <img src="frontend/src/assets/images/varys_logo.png" width="35" alt="Varys Logo">

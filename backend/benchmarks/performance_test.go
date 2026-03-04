@@ -93,11 +93,13 @@ func TestPerformanceBaseline(t *testing.T) {
 			analyzeDuration := time.Since(start).Seconds()
 
 			// 3. Benchmark Translation
-			tr := translation.NewTranslator("qwen3:0.6b")
+			// Use real Ollama provider for translation benchmark
+			transProvider := analyzer.NewAnalyzer("ollama", "", "qwen3:0.6b").GetProvider()
+			tr := translation.NewTranslator(transProvider)
 			var translateDuration float64 = 0
 			if filepath.Base(fileRel) != "test_audio.wav" {
 				start = time.Now()
-				_, err = tr.Translate(transcript, "Simplified Chinese", ctxSize, nil)
+				_, err = tr.Translate(context.Background(), transcript, "Simplified Chinese", ctxSize, nil)
 				if err != nil {
 					t.Errorf("Translate failed for %s (ctx %d): %v", fileRel, ctxSize, err)
 					continue
