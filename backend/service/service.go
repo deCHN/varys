@@ -137,9 +137,7 @@ func (s *CoreService) ProcessTask(ctx context.Context, url string, opts Options,
 
 	if transcript != "Transcription failed." {
 		targetLang := opts.TargetLanguage
-		if targetLang == "" {
-			targetLang = "English"
-		}
+		// Default is now handled globally in backend/config/config.go
 
 		// Smart Translation Logic
 		shouldTranslate := true
@@ -192,6 +190,15 @@ func (s *CoreService) ProcessTask(ctx context.Context, url string, opts Options,
 		if provider == "openai" {
 			model = opts.OpenAIModel
 		}
+
+		// Log rendered prompt for visibility
+		var displayPrompt string
+		if opts.CustomPrompt != "" {
+			displayPrompt = analyzer.RenderPrompt(opts.CustomPrompt, targetLang, transcript, true)
+		} else {
+			displayPrompt = analyzer.RenderPrompt(analyzer.GetDefaultPrompt(), targetLang, transcript, false)
+		}
+		logger.Log(fmt.Sprintf("--- RENDERED PROMPT START ---\n%s\n--- RENDERED PROMPT END ---", displayPrompt))
 
 		az := analyzer.NewAnalyzer(provider, apiKey, model)
 		analysis, err = az.Analyze(ctx, transcript, opts.CustomPrompt, targetLang, opts.ContextSize, func(token string) {

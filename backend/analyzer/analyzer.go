@@ -41,16 +41,31 @@ type AnalysisResult struct {
 	Model      string            `json:"model"`
 }
 
+// RenderPrompt applies placeholders to the prompt template.
+func RenderPrompt(template string, targetLang string, text string, isCustom bool) string {
+	if isCustom {
+		// For custom prompts, we only replace {{.Content}} if present, otherwise append it.
+		if strings.Contains(template, "{{.Content}}") {
+			return strings.ReplaceAll(template, "{{.Content}}", text)
+		}
+		return fmt.Sprintf("%s\n\nText to analyze:\n%s", template, text)
+	}
+
+	// For the default prompt, replace both Language and Content placeholders
+	rendered := strings.ReplaceAll(template, "{{.Language}}", targetLang)
+	return strings.ReplaceAll(rendered, "{{.Content}}", text)
+}
+
 func (a *Analyzer) Analyze(ctx context.Context, text string, customPrompt string, targetLang string, contextSize int, onToken func(string)) (*AnalysisResult, error) {
 	if targetLang == "" {
-		targetLang = "Simplified Chinese"
+		targetLang = "English"
 	}
 
 	var prompt string
 	if customPrompt != "" {
-		prompt = fmt.Sprintf("%s\n\nText to analyze:\n%s", customPrompt, text)
+		prompt = RenderPrompt(customPrompt, targetLang, text, true)
 	} else {
-		prompt = fmt.Sprintf(defaultAnalysisPrompt, targetLang, targetLang, targetLang, text)
+		prompt = RenderPrompt(defaultAnalysisPrompt, targetLang, text, false)
 	}
 
 	options := map[string]interface{}{
