@@ -8,11 +8,11 @@ Domain-Specific Analysis:
 - Finance/Cryptocurrency: Evaluate investment value, potential cash-out strategies, and provide a rigorous assessment of returns vs. risks.
 - Technology: Analyze timeliness (is it cutting-edge?), identify key competitors, and suggest alternative solutions.
 
-Task: Analyze the following text and provide a structured analysis in %s.
+Task: Analyze the following text and provide a structured analysis in {{.Language}}.
 
 Rules:
-1. OUTPUT MUST BE IN %s.
-2. If the input text is in English, TRANSLATE your analysis to %s.
+1. OUTPUT MUST BE IN {{.Language}}.
+2. If the input text is in English, TRANSLATE your analysis to {{.Language}}.
 3. Tags must be single words or hyphenated (no spaces).
 
 Format: Return ONLY a valid JSON object with the following structure:
@@ -29,4 +29,4 @@ Format: Return ONLY a valid JSON object with the following structure:
 }
 
 Text to analyze:
-%s
+{{.Content}}

@@ -41,6 +41,11 @@ func TestConfigSaveLoad(t *testing.T) {
 	if loaded.VaultPath != cfg.VaultPath {
 		t.Errorf("Expected VaultPath %s, got %s", cfg.VaultPath, loaded.VaultPath)
 	}
+
+	// Test Default Language
+	if loaded.TargetLanguage != "English" {
+		t.Errorf("Expected default TargetLanguage 'English', got '%s'", loaded.TargetLanguage)
+	}
 }
 
 func TestConfigValidate(t *testing.T) {

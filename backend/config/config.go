@@ -152,6 +152,9 @@ func (m *Manager) Load() (*Config, error) {
 	if cfg.OpenAIModel == "" {
 		cfg.OpenAIModel = "gpt-4o"
 	}
+	if cfg.TargetLanguage == "" {
+		cfg.TargetLanguage = "English"
+	}
 
 	return &cfg, nil
 }
