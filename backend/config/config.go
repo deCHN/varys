@@ -19,6 +19,7 @@ type Config struct {
 	AIProvider       string `json:"ai_provider"`       // "ollama" or "openai"
 	OpenAIModel      string `json:"openai_model"`      // e.g. "gpt-4o"
 	OpenAIKey        string `json:"openai_key,omitempty"` // Stored in Keyring, passed via Wails
+	TavilyKey        string `json:"tavily_key,omitempty"` // Stored in Keyring, passed via Wails
 }
 
 type Manager struct {
@@ -121,22 +122,32 @@ func (m *Manager) Load() (*Config, error) {
 	}
 
 	// 2. Fetch secrets from Keyring
-	key, err := secret.GetSecret(secret.KeyAccountOpenAI)
-	if err == nil && key != "" {
+	if key, err := secret.GetSecret(secret.KeyAccountOpenAI); err == nil && key != "" {
 		cfg.OpenAIKey = key
+	}
+	if tKey, err := secret.GetSecret(secret.KeyAccountTavily); err == nil && tKey != "" {
+		cfg.TavilyKey = tKey
 	}
 
 	// 3. Migration: Check if config.json still contains plain-text keys
-	// We do this by re-parsing into a map to see if the field exists in JSON
 	var raw map[string]interface{}
 	json.Unmarshal(data, &raw)
+	migrated := false
 	if oldKey, ok := raw["openai_key"].(string); ok && oldKey != "" {
-		// Found legacy key, move to keyring
 		if err := secret.SetSecret(secret.KeyAccountOpenAI, oldKey); err == nil {
 			cfg.OpenAIKey = oldKey
-			// Trigger a save to clean up the JSON file
-			m.Save(&cfg)
+			migrated = true
 		}
+	}
+	if oldTKey, ok := raw["tavily_key"].(string); ok && oldTKey != "" {
+		if err := secret.SetSecret(secret.KeyAccountTavily, oldTKey); err == nil {
+			cfg.TavilyKey = oldTKey
+			migrated = true
+		}
+	}
+
+	if migrated {
+		m.Save(&cfg)
 	}
 
 	// Set defaults if missing
@@ -162,14 +173,16 @@ func (m *Manager) Load() (*Config, error) {
 func (m *Manager) Save(cfg *Config) error {
 	// 1. Save sensitive data to Keyring
 	if cfg.OpenAIKey != "" {
-		if err := secret.SetSecret(secret.KeyAccountOpenAI, cfg.OpenAIKey); err != nil {
-			return fmt.Errorf("failed to save secret to keyring: %w", err)
-		}
+		secret.SetSecret(secret.KeyAccountOpenAI, cfg.OpenAIKey)
+	}
+	if cfg.TavilyKey != "" {
+		secret.SetSecret(secret.KeyAccountTavily, cfg.TavilyKey)
 	}
 
 	// 2. Prepare a copy for file storage (without sensitive keys)
 	fileCfg := *cfg
-	fileCfg.OpenAIKey = "" // Clear before saving to disk
+	fileCfg.OpenAIKey = ""
+	fileCfg.TavilyKey = "" // Clear before saving to disk
 
 	data, err := json.MarshalIndent(fileCfg, "", "  ")
 	if err != nil {
