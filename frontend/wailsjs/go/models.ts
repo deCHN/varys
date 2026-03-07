@@ -118,6 +118,7 @@ export namespace config {
 	    ai_provider: string;
 	    openai_model: string;
 	    openai_key?: string;
+	    tavily_key?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -135,6 +136,7 @@ export namespace config {
 	        this.ai_provider = source["ai_provider"];
 	        this.openai_model = source["openai_model"];
 	        this.openai_key = source["openai_key"];
+	        this.tavily_key = source["tavily_key"];
 	    }
 	}
 

@@ -46,6 +46,7 @@ var (
 	vaultPath      string
 	searchLimit    int
 	searchProvider string
+	tavilyKey      string
 )
 
 func runTask(url string, cmd *cobra.Command) {
@@ -157,12 +158,12 @@ An interactive TUI will open to show the results:
 			cm, _ := config.NewManager()
 			cfg, _ := cm.Load()
 
-			sm := search.NewSearchManager(os.Getenv("TAVILY_API_KEY"))
-			if cfg.OpenAIKey != "" && os.Getenv("TAVILY_API_KEY") == "" {
-				// Use key from config if env is not set
-				// sm = search.NewSearchManager(cfg.OpenAIKey) // Wait, Tavily key is separate
+			if tavilyKey != "" {
+				cfg.TavilyKey = tavilyKey
+				cm.Save(cfg)
 			}
 
+			sm := search.NewSearchManager(cfg.TavilyKey)
 			p, err := sm.GetProvider(searchProvider)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
@@ -195,6 +196,7 @@ An interactive TUI will open to show the results:
 	rootCmd.PersistentFlags().StringVar(&targetLang, "target-lang", "", "Target language for analysis and translation")
 	rootCmd.PersistentFlags().IntVar(&contextSize, "context-size", 0, "Context window size in tokens")
 	rootCmd.PersistentFlags().StringVar(&vaultPath, "vault", "", "Override path to Obsidian Vault")
+	rootCmd.PersistentFlags().StringVar(&tavilyKey, "tavily-key", "", "Tavily API Key for web search")
 
 	// Search Flags
 	searchCmd.Flags().IntVarP(&searchLimit, "limit", "l", 5, "Number of search results to fetch")
