@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import App from './App';
 import '@testing-library/jest-dom';
 
@@ -34,6 +34,7 @@ const appMocks = vi.hoisted(() => ({
     OpenOllamaModelLibrary: vi.fn(() => Promise.resolve("ok")),
     GetDefaultPrompt: vi.fn(() => Promise.resolve("Mock Default Prompt")),
     LocateConfigFile: vi.fn(() => Promise.resolve()),
+    OpenFile: vi.fn(() => Promise.resolve()),
 }));
 
 // Mock the Wails JS backend call
@@ -57,6 +58,7 @@ vi.mock('../wailsjs/go/app/App', () => ({
     OpenOllamaModelLibrary: appMocks.OpenOllamaModelLibrary,
     GetDefaultPrompt: appMocks.GetDefaultPrompt,
     LocateConfigFile: appMocks.LocateConfigFile,
+    OpenFile: appMocks.OpenFile,
 }));
 
 // Mock Wails Runtime (for EventsOn)
@@ -88,5 +90,28 @@ describe('App Component', () => {
         // Check Button exists
         const buttonElement = screen.getByTitle(/Start Processing/i);
         expect(buttonElement).toBeInTheDocument();
+    });
+
+    it('triggers OpenFile when clicking a successful task result', async () => {
+        const mockPath = "/path/to/note.md";
+        appMocks.SubmitTask.mockResolvedValue(`Saved to: ${mockPath}`);
+        
+        render(<App />);
+
+        // Simulate running a task
+        const input = screen.getByPlaceholderText(/Enter YouTube\/Bilibili URL/i);
+        const button = screen.getByTitle(/Start Processing/i);
+        
+        fireEvent.change(input, { target: { value: 'https://youtube.com/watch?v=123' } });
+        fireEvent.click(button);
+
+        // Wait for completion message (using findBy to wait for async state update)
+        const resultMessage = await screen.findByText(/Task completed/i);
+        expect(resultMessage).toBeInTheDocument();
+
+        // Click the message
+        fireEvent.click(resultMessage);
+
+        expect(appMocks.OpenFile).toHaveBeenCalledWith(mockPath);
     });
 });
