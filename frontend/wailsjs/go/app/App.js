@@ -42,6 +42,10 @@ export function LocateConfigFile() {
   return window['go']['app']['App']['LocateConfigFile']();
 }
 
+export function OpenFile(arg1) {
+  return window['go']['app']['App']['OpenFile'](arg1);
+}
+
 export function OpenOllamaModelLibrary() {
   return window['go']['app']['App']['OpenOllamaModelLibrary']();
 }

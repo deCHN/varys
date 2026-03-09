@@ -23,6 +23,8 @@ export function GetStartupDiagnostics():Promise<app.StartupDiagnostics>;
 
 export function LocateConfigFile():Promise<void>;
 
+export function OpenFile(arg1:string):Promise<void>;
+
 export function OpenOllamaModelLibrary():Promise<string>;
 
 export function ReadClipboardText():Promise<string>;
