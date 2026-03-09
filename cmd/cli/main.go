@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -37,16 +39,17 @@ func (p *CLIPresenter) Error(err error) {
 }
 
 var (
-	videoOnly      bool
-	aiProvider     string
-	model          string
-	translationMod string
-	targetLang     string
-	contextSize    int
-	vaultPath      string
-	searchLimit    int
-	searchProvider string
-	tavilyKey      string
+	videoOnly         bool
+	openAfterComplete bool
+	aiProvider        string
+	model             string
+	translationMod    string
+	targetLang        string
+	contextSize       int
+	vaultPath         string
+	searchLimit       int
+	searchProvider    string
+	tavilyKey         string
 )
 
 func runTask(url string, cmd *cobra.Command) {
@@ -125,6 +128,25 @@ func runTask(url string, cmd *cobra.Command) {
 	}
 
 	fmt.Printf("\nSuccess! Note saved to: %s\n", result.NotePath)
+
+	if openAfterComplete {
+		fmt.Printf("Opening note...\n")
+		openFile(result.NotePath)
+	}
+}
+
+// openFile is a cross-platform helper to open a file or directory.
+func openFile(path string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", path)
+	case "darwin":
+		cmd = exec.Command("open", path)
+	default: // linux and others
+		cmd = exec.Command("xdg-open", path)
+	}
+	return cmd.Start()
 }
 
 func main() {
@@ -190,6 +212,7 @@ An interactive TUI will open to show the results:
 
 	// Root Flags
 	rootCmd.PersistentFlags().BoolVarP(&videoOnly, "video", "v", false, "Download full video instead of audio only")
+	rootCmd.PersistentFlags().BoolVarP(&openAfterComplete, "open", "o", false, "Open the generated note after completion")
 	rootCmd.PersistentFlags().StringVarP(&aiProvider, "ai-provider", "p", "", "AI provider to use (ollama or Cloud LLMs)")
 	rootCmd.PersistentFlags().StringVar(&model, "model", "", "LLM model name")
 	rootCmd.PersistentFlags().StringVar(&translationMod, "translation-model", "", "Model used for translation")

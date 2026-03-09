@@ -16,11 +16,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -53,19 +54,19 @@ func (a *App) Startup(ctx context.Context) {
 	// 1. Dependencies
 	dm, err := dependency.NewManager()
 	if err != nil {
-		runtime.LogErrorf(a.ctx, "Error initializing dependency manager: %v", err)
+		wailsRuntime.LogErrorf(a.ctx, "Error initializing dependency manager: %v", err)
 		return
 	}
 	a.depManager = dm
 	// We only ensure yt-dlp/ffmpeg now. Whisper/Llama are system deps.
 	if err := a.depManager.EnsureBinaries(); err != nil {
-		runtime.LogErrorf(a.ctx, "Error ensuring binaries: %v", err)
+		wailsRuntime.LogErrorf(a.ctx, "Error ensuring binaries: %v", err)
 	}
 
 	// 2. Config
 	cm, err := config.NewManager()
 	if err != nil {
-		runtime.LogErrorf(a.ctx, "Error initializing config manager: %v", err)
+		wailsRuntime.LogErrorf(a.ctx, "Error initializing config manager: %v", err)
 	}
 	a.cfgManager = cm
 
@@ -118,7 +119,7 @@ func (a *App) Startup(ctx context.Context) {
 	// Initialize Core Service
 	a.coreService = service.NewCoreService(a.depManager)
 
-	runtime.LogInfo(a.ctx, "Backend initialized successfully.")
+	wailsRuntime.LogInfo(a.ctx, "Backend initialized successfully.")
 }
 
 // CancelTask cancels the currently running task
@@ -128,7 +129,7 @@ func (a *App) CancelTask() {
 	if a.taskCancel != nil {
 		a.taskCancel()
 		a.taskCancel = nil
-		runtime.LogInfo(a.ctx, "Task cancellation requested.")
+		wailsRuntime.LogInfo(a.ctx, "Task cancellation requested.")
 	}
 }
 
@@ -145,7 +146,7 @@ func (l *WailsLogger) Log(msg string) {
 		return
 	}
 	l.logBuffer = append(l.logBuffer, fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), msg))
-	runtime.EventsEmit(l.app.ctx, "task:log", msg)
+	wailsRuntime.EventsEmit(l.app.ctx, "task:log", msg)
 
 	msgLower := strings.ToLower(msg)
 	if strings.Contains(msgLower, "error") || strings.Contains(msgLower, "failed") {
@@ -155,13 +156,13 @@ func (l *WailsLogger) Log(msg string) {
 
 func (l *WailsLogger) Progress(percentage float64) {
 	if l.ctx.Err() == nil {
-		runtime.EventsEmit(l.app.ctx, "task:progress", percentage)
+		wailsRuntime.EventsEmit(l.app.ctx, "task:progress", percentage)
 	}
 }
 
 func (l *WailsLogger) AnalysisChunk(token string) {
 	if l.ctx.Err() == nil {
-		runtime.EventsEmit(l.app.ctx, "task:analysis", token)
+		wailsRuntime.EventsEmit(l.app.ctx, "task:analysis", token)
 	}
 }
 
@@ -171,7 +172,7 @@ func (l *WailsLogger) Error(err error) {
 
 // SubmitTask starts the pipeline
 func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr error) {
-	runtime.LogInfo(a.ctx, fmt.Sprintf("Received task for URL: %s (AudioOnly: %v)", url, audioOnly))
+	wailsRuntime.LogInfo(a.ctx, fmt.Sprintf("Received task for URL: %s (AudioOnly: %v)", url, audioOnly))
 
 	// Setup Cancellation Context
 	a.taskMutex.Lock()
@@ -259,7 +260,7 @@ func (a *App) SubmitTask(url string, audioOnly bool) (taskResult string, taskErr
 
 // GetAppVersion returns the current application version
 func (a *App) GetAppVersion() string {
-	return "v0.4.3"
+	return "v0.4.4"
 }
 
 // GetConfig returns current config
@@ -283,6 +284,11 @@ func (a *App) GetDefaultPrompt() string {
 	return analyzer.GetDefaultPrompt()
 }
 
+// OpenFile opens a file using the system's default application.
+func (a *App) OpenFile(path string) error {
+	return openFile(path)
+}
+
 // LocateConfigFile opens the file explorer and selects the config file.
 func (a *App) LocateConfigFile() error {
 	path, err := a.GetConfigPath()
@@ -290,8 +296,31 @@ func (a *App) LocateConfigFile() error {
 		return err
 	}
 
-	// For macOS (Darwin)
-	return exec.Command("open", "-R", path).Run()
+	// For macOS (Darwin), -R reveals in Finder. For others, we just open the dir.
+	if os.Getenv("GOOS") == "darwin" || runtime.GOOS == "darwin" {
+		return exec.Command("open", "-R", path).Run()
+	}
+	return openFile(filepath.Dir(path))
+}
+
+// openFile is a cross-platform helper to open a file or directory.
+func openFile(path string) error {
+	var cmd *exec.Cmd
+	// Use runtime.GOOS if GOOS env var is not set
+	goos := os.Getenv("GOOS")
+	if goos == "" {
+		goos = runtime.GOOS
+	}
+
+	switch goos {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", path)
+	case "darwin":
+		cmd = exec.Command("open", path)
+	default: // linux and others
+		cmd = exec.Command("xdg-open", path)
+	}
+	return cmd.Start()
 }
 
 type DependencyStatus struct {
@@ -676,7 +705,7 @@ func defaultConfig() *config.Config {
 func (a *App) loadConfigSafe() *config.Config {
 	if a.cfgManager == nil {
 		if a.ctx != nil {
-			runtime.LogWarning(a.ctx, "Config manager unavailable, falling back to default config.")
+			wailsRuntime.LogWarning(a.ctx, "Config manager unavailable, falling back to default config.")
 		}
 		return defaultConfig()
 	}
@@ -684,7 +713,7 @@ func (a *App) loadConfigSafe() *config.Config {
 	cfg, err := a.cfgManager.Load()
 	if err != nil || cfg == nil {
 		if a.ctx != nil {
-			runtime.LogWarningf(a.ctx, "Failed to load config, falling back to default config: %v", err)
+			wailsRuntime.LogWarningf(a.ctx, "Failed to load config, falling back to default config: %v", err)
 		}
 		return defaultConfig()
 	}
@@ -749,7 +778,7 @@ func (a *App) StopOllamaService() (string, error) {
 // OpenOllamaModelLibrary opens Ollama model library in the default browser.
 func (a *App) OpenOllamaModelLibrary() string {
 	if a.ctx != nil {
-		runtime.BrowserOpenURL(a.ctx, "https://ollama.com/library")
+		wailsRuntime.BrowserOpenURL(a.ctx, "https://ollama.com/library")
 	}
 	return "opened ollama model library"
 }
@@ -784,12 +813,12 @@ func (a *App) UpdateOpenAIKey(key string) error {
 	return a.cfgManager.Save(cfg)
 }
 
-// ReadClipboardText returns text from system clipboard through Wails runtime.
+// ReadClipboardText returns text from system clipboard through Wails wailsRuntime.
 func (a *App) ReadClipboardText() (string, error) {
 	if a.ctx == nil {
 		return "", fmt.Errorf("application context not initialized")
 	}
-	return runtime.ClipboardGetText(a.ctx)
+	return wailsRuntime.ClipboardGetText(a.ctx)
 }
 
 func maskSecretForDisplay(value string) string {
@@ -805,16 +834,16 @@ func maskSecretForDisplay(value string) string {
 
 // SelectVaultPath opens a directory dialog
 func (a *App) SelectVaultPath() (string, error) {
-	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+	return wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{
 		Title: "Select Obsidian Vault Folder",
 	})
 }
 
 // SelectModelPath opens a file dialog for .bin
 func (a *App) SelectModelPath() (string, error) {
-	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+	return wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
 		Title: "Select Whisper Model",
-		Filters: []runtime.FileFilter{
+		Filters: []wailsRuntime.FileFilter{
 			{DisplayName: "Whisper Models (*.bin)", Pattern: "*.bin"},
 		},
 	})
