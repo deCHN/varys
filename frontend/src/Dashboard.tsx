@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useTaskRunner } from './hooks/useTaskRunner';
 import LogConsole from './components/LogConsole';
 import AnalysisViewer from './components/AnalysisViewer';
-import { GetStartupDiagnostics } from '../wailsjs/go/app/App';
+import { GetStartupDiagnostics, OpenFile } from '../wailsjs/go/app/App';
 
 interface DashboardProps {
     onPreflightFailed?: () => void;
@@ -49,6 +49,16 @@ export default function Dashboard(props: DashboardProps) {
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') handleProcessToggle();
     };
+
+    const handleOpenResult = () => {
+        if (resultText && resultText.startsWith("Saved to: ")) {
+            const path = resultText.replace("Saved to: ", "").trim();
+            OpenFile(path).catch(console.error);
+        }
+    };
+
+    const isSuccess = resultText && resultText.startsWith("Saved to: ");
+    const isError = resultText && resultText.includes("failed");
 
     return (
         <div className="flex flex-col h-full max-w-5xl mx-auto p-6 w-full relative">
@@ -128,12 +138,31 @@ export default function Dashboard(props: DashboardProps) {
 
             {/* Footer Status */}
             {resultText && (
-                <div className={`mt-4 text-center text-sm font-bold py-3 rounded-xl backdrop-blur-sm animate-in zoom-in-95 duration-300 shadow-lg ${
-                    resultText.includes("failed")
-                    ? 'bg-red-500/10 text-red-400 border border-red-500/30'
-                    : 'bg-varys-secondary/10 text-varys-secondary border border-varys-secondary/30'
-                }`}>
-                    {resultText}
+                <div 
+                    onClick={isSuccess ? handleOpenResult : undefined}
+                    className={`mt-4 text-center py-3 rounded-xl backdrop-blur-sm animate-in zoom-in-95 duration-300 shadow-lg border transition-all ${
+                        isError
+                        ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                        : isSuccess
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 cursor-pointer hover:bg-emerald-500/20'
+                            : 'bg-varys-secondary/10 text-varys-secondary border-varys-secondary/30'
+                    }`}
+                >
+                    <div className="flex items-center justify-center gap-2">
+                        {isSuccess && (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        )}
+                        <span className="font-bold text-sm">
+                            {isSuccess ? "Task completed" : resultText}
+                        </span>
+                    </div>
+                    {isSuccess && (
+                        <span className="block text-[10px] opacity-60 font-medium mt-0.5 tracking-wide">
+                            Click to open
+                        </span>
+                    )}
                 </div>
             )}
         </div>

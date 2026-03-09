@@ -45,7 +45,7 @@ export function useTaskRunner() {
         try {
             const response = await SubmitTask(url, audioOnly);
             addLog(`Backend Response: ${response}`);
-            setResultText("Task completed");
+            setResultText(response); // Use actual response (e.g. "Saved to: ...")
         } catch (err: any) {
             addLog(`Error: ${err}`);
             setResultText("Task failed");
