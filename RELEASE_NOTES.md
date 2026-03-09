@@ -1,5 +1,14 @@
 # Release Notes
 
+## v0.4.4 (March 2026)
+
+**Focus:** Workflow Integration & Ease of Access.
+
+### Improvements
+*   **One-Click Note Opening (GUI):** Successfully completed tasks now show a clickable result message. Clicking it immediately opens the generated Markdown note in Obsidian (or your default editor).
+*   **CLI Auto-Open:** Added a new `--open` (or `-o`) flag to the CLI. When enabled, the generated note will automatically open upon task completion.
+*   **Cross-Platform File Opening:** Implemented a robust, cross-platform file opening mechanism for both GUI and CLI.
+
 ## v0.4.3 (March 2026)
 
 **Focus:** Flexible Prompting & Global Consistency.

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useTaskRunner } from './hooks/useTaskRunner';
 import LogConsole from './components/LogConsole';
 import AnalysisViewer from './components/AnalysisViewer';
-import { GetStartupDiagnostics } from '../wailsjs/go/app/App';
+import { GetStartupDiagnostics, OpenFile } from '../wailsjs/go/app/App';
 
 interface DashboardProps {
     onPreflightFailed?: () => void;
@@ -48,6 +48,13 @@ export default function Dashboard(props: DashboardProps) {
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') handleProcessToggle();
+    };
+
+    const handleOpenResult = () => {
+        if (resultText && resultText.startsWith("Saved to: ")) {
+            const path = resultText.replace("Saved to: ", "").trim();
+            OpenFile(path).catch(console.error);
+        }
     };
 
     return (
@@ -128,12 +135,20 @@ export default function Dashboard(props: DashboardProps) {
 
             {/* Footer Status */}
             {resultText && (
-                <div className={`mt-4 text-center text-sm font-bold py-3 rounded-xl backdrop-blur-sm animate-in zoom-in-95 duration-300 shadow-lg ${
-                    resultText.includes("failed")
-                    ? 'bg-red-500/10 text-red-400 border border-red-500/30'
-                    : 'bg-varys-secondary/10 text-varys-secondary border border-varys-secondary/30'
-                }`}>
+                <div 
+                    onClick={resultText.startsWith("Saved to: ") ? handleOpenResult : undefined}
+                    className={`mt-4 text-center text-sm font-bold py-3 rounded-xl backdrop-blur-sm animate-in zoom-in-95 duration-300 shadow-lg ${
+                        resultText.includes("failed")
+                        ? 'bg-red-500/10 text-red-400 border border-red-500/30'
+                        : resultText.startsWith("Saved to: ")
+                            ? 'bg-varys-secondary/10 text-varys-secondary border border-varys-secondary/30 cursor-pointer hover:bg-varys-secondary/20 transition-all'
+                            : 'bg-varys-secondary/10 text-varys-secondary border border-varys-secondary/30'
+                    }`}
+                >
                     {resultText}
+                    {resultText.startsWith("Saved to: ") && (
+                        <span className="block text-[10px] opacity-60 font-medium mt-0.5">Click to open in Obsidian</span>
+                    )}
                 </div>
             )}
         </div>
