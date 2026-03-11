@@ -51,6 +51,26 @@ func TestParseYTDLPLine(t *testing.T) {
 	}
 }
 
+func TestParseYTDLPWithUploadDate(t *testing.T) {
+	jsonLine := `{"id": "12345", "title": "Test Video", "upload_date": "20240309", "uploader": "Test Channel"}`
+	
+	var entry map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonLine), &entry); err != nil {
+		t.Fatalf("Failed to unmarshal test JSON: %v", err)
+	}
+
+	var publishedAt time.Time
+	if dateStr, ok := entry["upload_date"].(string); ok && dateStr != "" {
+		if t, err := time.Parse("20060102", dateStr); err == nil {
+			publishedAt = t
+		}
+	}
+
+	if publishedAt.Format("2006-01-02") != "2024-03-09" {
+		t.Errorf("Expected date 2024-03-09, got %s", publishedAt.Format("2006-01-02"))
+	}
+}
+
 func TestYTDLPSearchCommand(t *testing.T) {
 	p := NewYTDLPSearchProvider()
 	if p == nil {
