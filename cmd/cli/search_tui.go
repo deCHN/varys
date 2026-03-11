@@ -30,7 +30,13 @@ type item struct {
 }
 
 func (i item) Title() string       { return i.title }
-func (i item) Description() string { return fmt.Sprintf("[%s] %s", i.result.Source, i.result.URL) }
+func (i item) Description() string {
+	dateStr := "N/A"
+	if !i.result.PublishedAt.IsZero() {
+		dateStr = i.result.PublishedAt.Format("2006-01-02")
+	}
+	return fmt.Sprintf("[%s] %s | %s", i.result.Source, dateStr, i.result.URL)
+}
 func (i item) FilterValue() string { return i.result.Title + " " + i.result.Description }
 
 type SearchModel struct {

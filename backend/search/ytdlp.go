@@ -38,7 +38,7 @@ func (p *YTDLPSearchProvider) Search(query string, opts SearchOptions) ([]Search
 
 	args := []string{
 		"--dump-json",
-		"--flat-playlist",
+		"--cookies-from-browser", "chrome",
 		"--quiet",
 		searchQuery,
 	}
@@ -72,8 +72,18 @@ func (p *YTDLPSearchProvider) Search(query string, opts SearchOptions) ([]Search
 		uploader, _ := entry["uploader"].(string)
 		
 		var publishedAt time.Time
-		if epoch, ok := entry["epoch"].(float64); ok {
-			publishedAt = time.Unix(int64(epoch), 0)
+		if dateStr, ok := entry["upload_date"].(string); ok && dateStr != "" {
+			if t, err := time.Parse("20060102", dateStr); err == nil {
+				publishedAt = t
+			}
+		}
+
+		if publishedAt.IsZero() {
+			if ts, ok := entry["timestamp"].(float64); ok {
+				publishedAt = time.Unix(int64(ts), 0)
+			} else if rts, ok := entry["release_timestamp"].(float64); ok {
+				publishedAt = time.Unix(int64(rts), 0)
+			}
 		}
 
 		results = append(results, SearchResult{
