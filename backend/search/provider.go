@@ -14,9 +14,10 @@ const (
 
 // SearchOptions provides common parameters for search requests
 type SearchOptions struct {
-	Limit     int
-	TimeRange string // "day", "week", "month", "year"
-	Type      ContentType
+	Limit      int
+	TimeRange  string // "day", "week", "month", "year"
+	Type       ContentType
+	OnProgress func(current, total int)
 }
 
 // SearchResult represents a standardized format for search results

@@ -1,10 +1,10 @@
 package search
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -43,16 +43,26 @@ func (p *YTDLPSearchProvider) Search(query string, opts SearchOptions) ([]Search
 		searchQuery,
 	}
 
-	cmd := exec.Command("yt-dlp", args...)
-	output, err := cmd.Output()
+	ytPath := "yt-dlp"
+	cmd := exec.Command(ytPath, args...)
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("failed to run yt-dlp: %w", err)
+		return nil, fmt.Errorf("failed to get stdout pipe: %w", err)
 	}
 
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	results := make([]SearchResult, 0, len(lines))
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start yt-dlp: %w", err)
+	}
 
-	for _, line := range lines {
+	results := make([]SearchResult, 0, limit)
+	scanner := bufio.NewScanner(stdout)
+	// Use 1MB buffer to handle large JSON records in detailed mode (lots of formats/subtitles)
+	const maxCapacity = 1024 * 1024
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+	
+	for scanner.Scan() {
+		line := scanner.Text()
 		if line == "" {
 			continue
 		}
@@ -95,6 +105,18 @@ func (p *YTDLPSearchProvider) Search(query string, opts SearchOptions) ([]Search
 			PublishedAt: publishedAt,
 			Type:        ContentTypeVideo,
 		})
+
+		if opts.OnProgress != nil {
+			opts.OnProgress(len(results), limit)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("scanner error during search: %w", err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return nil, fmt.Errorf("yt-dlp search command failed: %w", err)
 	}
 
 	return results, nil
