@@ -1,5 +1,15 @@
 # Release Notes
 
+## v0.4.5 (March 2026)
+
+**Focus:** Search Visibility & UX.
+
+### Improvements
+*   **Upload Date in Search Results:** Search results (yt-dlp) now display the actual upload date of the content, helping users identify the most relevant and recent videos.
+*   **Animated Search Interface:** The CLI search interface now features an animated progress bar and spinner, providing real-time feedback during detailed metadata extraction.
+*   **Robust Search Parsing:** Improved yt-dlp JSON parsing with increased buffers and support for multiple timestamp formats to handle complex metadata reliably.
+*   **Session-Aware Extraction:** Integrated browser cookies support for search to ensure reliable access to detailed video metadata without bot interference.
+
 ## v0.4.4 (March 2026)
 
 **Focus:** Workflow Integration & Ease of Access.
